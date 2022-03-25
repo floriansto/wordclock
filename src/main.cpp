@@ -3,6 +3,7 @@
 #include <Adafruit_NeoMatrix.h>
 #include <WiFiManager.h>
 #include <ESP8266WebServer.h>
+#include <NTPClient.h>
 #include <math.h>
 
 #define PIN D6
@@ -20,9 +21,11 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(ROW_PIXELS, COL_PIXELS, PIN,
   NEO_GRB            + NEO_KHZ800);
 
 WiFiManager wifiManager;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
 ESP8266WebServer server(80);
 
-int delayval = 100;
+int delayval = 1000;
 int brightness = INITIAL_BRIGHTNESS;
 
 String SendHTML() {
@@ -96,13 +99,23 @@ void setup() {
 
   server.begin();
   Serial.println("HTTP server started");
+  
+  timeClient.begin();
+  Serial.println("NTP client started");
+  
+  timeClient.setTimeOffset(3600);
 }
 
 void loop() {
   double scale = 1.0;
   int color;
 
+  timeClient.update();
   server.handleClient();
+  
+  String timeFormatted = timeClient.getFormattedTime();
+  Serial.print("It is ");
+  Serial.println(timeFormatted);
 
   scale = (double) ALLOWED_CURRENT_PER_COLOR_MA/MAX_CURRENT_PER_COLOR_MA;
   scale = scale > 1.0 ? 1.0 : scale;
