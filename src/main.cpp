@@ -11,11 +11,13 @@
 #define PIN D6
 #define COL_PIXELS 5
 #define ROW_PIXELS 14
-#define NUMPIXELS COL_PIXELS * ROW_PIXELS
-#define MAX_CURRENT_MA 400.0
-#define ALLOWED_CURRENT_PER_COLOR_MA (MAX_CURRENT_MA / NUMPIXELS / 4.0)
-#define MAX_CURRENT_PER_COLOR_MA 11
+#define NUMPIXELS (COL_PIXELS * ROW_PIXELS)
 #define INITIAL_BRIGHTNESS 10
+
+const double max_current_ma = 400.0;
+const double allowed_current_per_color_ma = (max_current_ma / (double) NUMPIXELS / 4.0);
+const double max_current_per_color_ma = 11.0;
+const double scale = allowed_current_per_color_ma / max_current_per_color_ma;
 
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(ROW_PIXELS, COL_PIXELS, PIN,
   NEO_MATRIX_TOP     + NEO_MATRIX_LEFT +
@@ -47,7 +49,7 @@ void handleBrightness() {
   else
     brightness = brightness < 5 ? 0 : brightness - 5;
   server.send(200, "text/plain", String(brightness));
-  matrix.setBrightness(brightness);
+  matrix.setBrightness(brightness * scale);
 }
 
 void handleNotFound(){
@@ -67,7 +69,8 @@ void setup() {
 
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(brightness);
+  matrix.setBrightness(brightness * scale);
+  Serial.println(scale);
   matrix.setTextColor(matrix.Color(255, 0, 0));
 
   WiFi.mode(WIFI_STA);
@@ -103,10 +106,6 @@ void loop() {
   server.handleClient();
   
   curTime = timeClient.getFormattedTime();
-
-  scale = (double) ALLOWED_CURRENT_PER_COLOR_MA/MAX_CURRENT_PER_COLOR_MA;
-  scale = scale > 1.0 ? 1.0 : scale;
-  matrix.setBrightness(brightness * scale);
 
   color = matrix.Color(255, 0, 0);
   if (WiFi.status() == WL_CONNECTED)
