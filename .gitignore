@@ -1,1 +1,5 @@
 venv/
+.pio/
+
+c_cpp_properties.json
+launch.json

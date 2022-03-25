@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_NeoMatrix.h>
 #include <WiFiManager.h>
@@ -23,6 +24,34 @@ ESP8266WebServer server(80);
 
 int delayval = 100;
 int brightness = INITIAL_BRIGHTNESS;
+
+String SendHTML() {
+  char br[33];
+  String ptr = "<!DOCTYPE html> <html>\n";
+  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+  ptr +="<title>Wordclock</title>\n";
+  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+  ptr +="body{margin-top: 50px;text_align: center} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
+  ptr +=".button {display: inline-block;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
+  ptr +=".button-on {background-color: #1abc9c;}\n";
+  ptr +=".button-on:active {background-color: #16a085;}\n";
+  ptr +=".button-off {background-color: #34495e;}\n";
+  ptr +=".button-off:active {background-color: #2c3e50;}\n";
+  ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
+  ptr +="</style>\n";
+  ptr +="</head>\n";
+  ptr +="<body>\n";
+  ptr +="<h1>Wordclock Web Server</h1>\n";
+
+  ptr +="<p>LED Brightness Up</p><a class=\"button button-on\" href=\"/brighter\">BRIGHTER</a>\n";
+  ptr +="<p>LED Brightness Down</p><a class=\"button button-off\" href=\"/darker\">DARKER</a>\n";
+  sprintf(br, "<p>Current Brightness<br>%d</p>", brightness);
+  ptr += br;
+
+  ptr +="</body>\n";
+  ptr +="</html>\n";
+  return ptr;
+}
 
 void handle_OnConnect() {
   brightness = INITIAL_BRIGHTNESS;
@@ -53,7 +82,6 @@ void setup() {
   matrix.setTextColor(matrix.Color(255, 0, 0));
 
   WiFi.mode(WIFI_STA);
-  wifiManager.setConfigPortalBlocking(false);
   wifiManager.setConfigPortalTimeout(60);
   if (wifiManager.autoConnect("Wordclock")) {
     Serial.println("Connected to wifi :)");
@@ -74,7 +102,6 @@ void loop() {
   double scale = 1.0;
   int color;
 
-  wifiManager.process();
   server.handleClient();
 
   scale = (double) ALLOWED_CURRENT_PER_COLOR_MA/MAX_CURRENT_PER_COLOR_MA;
@@ -93,30 +120,3 @@ void loop() {
   delay(delayval);
 }
 
-String SendHTML() {
-  char br[33];
-  String ptr = "<!DOCTYPE html> <html>\n";
-  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-  ptr +="<title>Wordclock</title>\n";
-  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-  ptr +="body{margin-top: 50px;text_align: center} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
-  ptr +=".button {display: inline-block;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
-  ptr +=".button-on {background-color: #1abc9c;}\n";
-  ptr +=".button-on:active {background-color: #16a085;}\n";
-  ptr +=".button-off {background-color: #34495e;}\n";
-  ptr +=".button-off:active {background-color: #2c3e50;}\n";
-  ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
-  ptr +="</style>\n";
-  ptr +="</head>\n";
-  ptr +="<body>\n";
-  ptr +="<h1>Wordclock Web Server</h1>\n";
-
-  ptr +="<p>LED Brightness Up</p><a class=\"button button-on\" href=\"/brighter\">BRIGHTER</a>\n";
-  ptr +="<p>LED Brightness Down</p><a class=\"button button-off\" href=\"/darker\">DARKER</a>\n";
-  sprintf(br, "<p>Current Brightness<br>%d</p>", brightness);
-  ptr += br;
-
-  ptr +="</body>\n";
-  ptr +="</html>\n";
-  return ptr;
-}
