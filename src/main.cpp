@@ -5,6 +5,8 @@
 #include <ESP8266WebServer.h>
 #include <NTPClient.h>
 #include <math.h>
+#include "../includes_gen/index.h"
+#include "../includes_gen/css.h"
 
 #define PIN D6
 #define COL_PIXELS 5
@@ -25,55 +27,39 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 ESP8266WebServer server(80);
 
-int delayval = 1000;
 int brightness = INITIAL_BRIGHTNESS;
+String curTime = "00:00:00";
 
-String SendHTML() {
-  char br[33];
-  String ptr = "<!DOCTYPE html> <html>\n";
-  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-  ptr +="<title>Wordclock</title>\n";
-  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-  ptr +="body{margin-top: 50px;text_align: center} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
-  ptr +=".button {display: inline-block;background-color: #1abc9c;border: none;color: white;padding: 13px 30px;text-decoration: none;font-size: 25px;margin: 0px auto 35px;cursor: pointer;border-radius: 4px;}\n";
-  ptr +=".button-on {background-color: #1abc9c;}\n";
-  ptr +=".button-on:active {background-color: #16a085;}\n";
-  ptr +=".button-off {background-color: #34495e;}\n";
-  ptr +=".button-off:active {background-color: #2c3e50;}\n";
-  ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
-  ptr +="</style>\n";
-  ptr +="</head>\n";
-  ptr +="<body>\n";
-  ptr +="<h1>Wordclock Web Server</h1>\n";
-
-  ptr +="<p>LED Brightness Up</p><a class=\"button button-on\" href=\"/brighter\">BRIGHTER</a>\n";
-  ptr +="<p>LED Brightness Down</p><a class=\"button button-off\" href=\"/darker\">DARKER</a>\n";
-  sprintf(br, "<p>Current Brightness<br>%d</p>", brightness);
-  ptr += br;
-
-  ptr +="</body>\n";
-  ptr +="</html>\n";
-  return ptr;
-}
-
-void handle_OnConnect() {
+void handleOnConnect() {
   brightness = INITIAL_BRIGHTNESS;
-  Serial.println("Brightness: 100%");
-  server.send(200, "text/html", SendHTML());
+  server.send(200, "text/html", index_html);
 }
 
-void handle_brightnessup() {
-  brightness = brightness > 95 ? 100 : brightness + 5;
-  server.send(200, "text/html", SendHTML());
+void handleCss() {
+  server.send(200, "text/css", style_css);
 }
 
-void handle_brightnessdown() {
-  brightness = brightness < 5 ? 0 : brightness - 5;
-  server.send(200, "text/html", SendHTML());
+void handleBrightness() {
+  String state = server.arg("LEDBrightness");
+  Serial.println(state);
+  if (state == "up")
+    brightness = brightness > 95 ? 100 : brightness + 5;
+  else
+    brightness = brightness < 5 ? 0 : brightness - 5;
+  server.send(200, "text/plain", String(brightness));
+  matrix.setBrightness(brightness);
 }
 
-void handle_NotFound(){
+void handleNotFound(){
   server.send(404, "text/plain", "Not found");
+}
+
+void handleGetBrightness(){
+  server.send(200, "text/plain", String(brightness));
+}
+
+void handleGetTime() {
+  server.send(200, "text/plain", String(curTime));
 }
 
 void setup() {
@@ -92,10 +78,12 @@ void setup() {
     Serial.println("Configportal at 192.168.4.1 running");
   }
 
-  server.on("/", handle_OnConnect);
-  server.on("/brighter", handle_brightnessup);
-  server.on("/darker", handle_brightnessdown);
-  server.onNotFound(handle_NotFound);
+  server.on("/", handleOnConnect);
+  server.on("/style.css", handleCss);
+  server.on("/setBrightness", handleBrightness);
+  server.on("/readBrightness", handleGetBrightness);
+  server.on("/readTime", handleGetTime);
+  server.onNotFound(handleNotFound);
 
   server.begin();
   Serial.println("HTTP server started");
@@ -106,6 +94,7 @@ void setup() {
   timeClient.setTimeOffset(3600);
 }
 
+
 void loop() {
   double scale = 1.0;
   int color;
@@ -113,9 +102,7 @@ void loop() {
   timeClient.update();
   server.handleClient();
   
-  String timeFormatted = timeClient.getFormattedTime();
-  Serial.print("It is ");
-  Serial.println(timeFormatted);
+  curTime = timeClient.getFormattedTime();
 
   scale = (double) ALLOWED_CURRENT_PER_COLOR_MA/MAX_CURRENT_PER_COLOR_MA;
   scale = scale > 1.0 ? 1.0 : scale;
@@ -130,6 +117,6 @@ void loop() {
   matrix.fillScreen(0);
   matrix.fillCircle(7, 2, 2, color);
   matrix.show();
-  delay(delayval);
+  delay(10);
 }
 
