@@ -1,12 +1,14 @@
 #include <timestack.h>
 
-bool Timestack::push(ClockStr state, bool useDialect) {
+bool Timestack::push(TIMESTACK elem) {
   if (m_stacksize >= WORDSTACK_SIZE) {
     return false;
   }
-  m_stack[m_stacksize++] = TIMESTACK{useDialect, state};
+  m_stack[m_stacksize++] = elem;
   return true;
 }
+
+Timestack::Timestack() { m_stacksize = 0; }
 
 bool Timestack::pop(TIMESTACK *elem) {
   if (m_stacksize == 0) {
@@ -22,7 +24,7 @@ bool Timestack::get(TIMESTACK *elem, int idx) {
     elem = nullptr;
     return false;
   }
-  elem = &m_stack[idx];
+  *elem = m_stack[idx];
   return true;
 }
 

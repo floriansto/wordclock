@@ -6,14 +6,14 @@
 enum class ClockStr;
 
 typedef struct _timestack {
-  bool useDialect;
   ClockStr state;
+  bool useDialect;
 } TIMESTACK;
 
 class Timestack {
 public:
-  Timestack(){};
-  bool push(ClockStr state, bool useDialect);
+  Timestack();
+  bool push(TIMESTACK elem);
   bool pop(TIMESTACK *elem);
   void init();
   bool get(TIMESTACK *elem, int idx);
