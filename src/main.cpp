@@ -30,7 +30,10 @@ WiFiManager wifiManager;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 ESP8266WebServer server(80);
+u_int16_t offsetLeftSecs = 0;
+u_int16_t offsetRightSecs = -offsetLeftSecs + 300;
 bool error = false;
+
 
 u_int8_t brightness = INITIAL_BRIGHTNESS;
 
@@ -44,43 +47,55 @@ ClockStr getStateFromNum(u_int8_t num)
   get_enum_from_num(num);
 }
 
-String getString(ClockStr state, bool dialect)
+String getString(TIMESTACK *element)
 {
-  if (dialect)
+  if (element->useDialect)
   {
-    get_str_dialect_from_enum(state);
+    get_str_dialect_from_enum(element->state);
   }
   else
   {
-    get_str_from_enum(state);
+    get_str_from_enum(element->state);
   }
 }
 
-bool isNum(ClockStr state)
-{
-  get_is_num_from_enum(state);
-}
-
-bool writeToStack(ClockStr* stack, ClockStr state, u_int8_t *stack_size)
+bool writeToStack(TIMESTACK* stack, ClockStr state, bool useDialect, u_int8_t *stack_size)
 {
   if (*stack_size == WORDSTACK_SIZE)
   {
     error = true;
     return false;
   }
-  stack[(*stack_size)++] = state;
+  stack[*stack_size].state = state;
+  stack[*stack_size].useDialect = useDialect;
+  ++(*stack_size);
   return true;
 }
 
-String evalTime(time_t epochTime)
+u_int16_t getHighBorder(u_int16_t time)
 {
-  ClockStr stack[WORDSTACK_SIZE];
+  return time > 3600 - offsetRightSecs ? time - 3600 - offsetRightSecs : time + offsetRightSecs;
+}
+
+u_int16_t getLowBorder(u_int16_t time)
+{
+  return time < offsetLeftSecs ? 3600 + time - offsetLeftSecs : time - offsetLeftSecs;
+}
+
+
+bool checkInterval(u_int16_t seconds, u_int16_t secs_check)
+{
+  return seconds >= getLowBorder(secs_check) &&
+         seconds < getHighBorder(secs_check);
+}
+
+u_int8_t getTimeStack(TIMESTACK *stack, time_t epochTime)
+{
   struct tm *ptm = gmtime((time_t *)&epochTime);
   u_int8_t hour = fmod(ptm->tm_hour, 12);
   u_int16_t seconds = ptm->tm_sec + ptm->tm_min * 60;
   u_int8_t i = 0;
   String time = "";
-  bool dialectTmp = false;
 
   bool useQuaterPast = true;
   bool useThreeQuater = true;
@@ -91,121 +106,119 @@ String evalTime(time_t epochTime)
     hour = 12;
   }
   
-  writeToStack(stack, ClockStr::It, &i);
-  writeToStack(stack, ClockStr::Is, &i);
+  writeToStack(stack, ClockStr::It, useDialect, &i);
+  writeToStack(stack, ClockStr::Is, useDialect, &i);
   // Five after
-  if (seconds > 150 && seconds < 450)
+  if (checkInterval(seconds, 5*60))
   {
-    writeToStack(stack, ClockStr::Five, &i);
-    writeToStack(stack, ClockStr::After, &i);
+    writeToStack(stack, ClockStr::Five, false, &i);
+    writeToStack(stack, ClockStr::After, useDialect, &i);
   }
   // Ten after
-  else if (seconds >= 450 && seconds < 750)
+  else if (checkInterval(seconds, 10*60))
   {
-    writeToStack(stack, ClockStr::Ten, &i);
-    writeToStack(stack, ClockStr::After, &i);
+    writeToStack(stack, ClockStr::Ten, false, &i);
+    writeToStack(stack, ClockStr::After, useDialect, &i);
   }
   // Fiveteen after
-  else if (seconds >= 750 && seconds < 1050)
+  else if (checkInterval(seconds, 15*60))
   {
-    writeToStack(stack, ClockStr::Quater, &i);
+    writeToStack(stack, ClockStr::Quater, useDialect, &i);
     if (useQuaterPast)
-      writeToStack(stack, ClockStr::After, &i);
+      writeToStack(stack, ClockStr::After, useDialect, &i);
     else
       hour = riseHour(hour);
   }
-  else if (seconds >= 1050)
+  else if (seconds >= getHighBorder(15 * 60))
   {
     hour = riseHour(hour);
     // Ten before half
-    if (seconds >= 1050 && seconds < 1350)
+    if (checkInterval(seconds, 20*60))
     {
-      writeToStack(stack, ClockStr::Ten, &i);
-      writeToStack(stack, ClockStr::Before, &i);
-      writeToStack(stack, ClockStr::Half, &i);
+      writeToStack(stack, ClockStr::Ten, false, &i);
+      writeToStack(stack, ClockStr::Before, useDialect, &i);
+      writeToStack(stack, ClockStr::Half, false, &i);
     }
     // Five before half
-    else if (seconds >= 1350 && seconds < 1650)
+    else if (checkInterval(seconds, 25*60))
     {
-      writeToStack(stack, ClockStr::Five, &i);
-      writeToStack(stack, ClockStr::Before, &i);
-      writeToStack(stack, ClockStr::Half, &i);
+      writeToStack(stack, ClockStr::Five, false, &i);
+      writeToStack(stack, ClockStr::Before, useDialect, &i);
+      writeToStack(stack, ClockStr::Half, false, &i);
     }
     // Half
-    else if (seconds >= 1650 && seconds < 1950)
+    else if (checkInterval(seconds, 30*60))
     {
-      writeToStack(stack, ClockStr::Half, &i);
+      writeToStack(stack, ClockStr::Half, useDialect, &i);
     }
     // Five after half
-    else if (seconds >= 1950 && seconds < 2250)
+    else if (checkInterval(seconds, 35*60))
     {
-      writeToStack(stack, ClockStr::Five, &i);
-      writeToStack(stack, ClockStr::After, &i);
-      writeToStack(stack, ClockStr::Half, &i);
+      writeToStack(stack, ClockStr::Five, false, &i);
+      writeToStack(stack, ClockStr::After, useDialect, &i);
+      writeToStack(stack, ClockStr::Half, false, &i);
     }
     // Ten after half
-    else if (seconds >= 2250 && seconds < 2550)
+    else if (checkInterval(seconds, 40*60))
     {
-      writeToStack(stack, ClockStr::Ten, &i);
-      writeToStack(stack, ClockStr::After, &i);
-      writeToStack(stack, ClockStr::Half, &i);
+      writeToStack(stack, ClockStr::Ten, false, &i);
+      writeToStack(stack, ClockStr::After, useDialect, &i);
+      writeToStack(stack, ClockStr::Half, false, &i);
     }
-    else if (seconds >= 2550 && seconds < 2850)
+    else if (checkInterval(seconds, 45*60))
     {
       // Quater before
       if (useThreeQuater)
       {
-        writeToStack(stack, ClockStr::ThreeQuater, &i);
+        writeToStack(stack, ClockStr::ThreeQuater, useDialect, &i);
       }
       else
       {
-        writeToStack(stack, ClockStr::Quater, &i);
-        writeToStack(stack, ClockStr::Before, &i);
+        writeToStack(stack, ClockStr::Quater, useDialect, &i);
+        writeToStack(stack, ClockStr::Before, useDialect, &i);
       }
     }
     // Ten before
-    else if (seconds >= 2850 && seconds < 3150)
+    else if (checkInterval(seconds, 50*60))
     {
-      writeToStack(stack, ClockStr::Ten, &i);
-      writeToStack(stack, ClockStr::Before, &i);
+      writeToStack(stack, ClockStr::Ten, false, &i);
+      writeToStack(stack, ClockStr::Before, useDialect, &i);
     }
     // Five before
-    else if (seconds >= 3150 && seconds < 3450)
+    else if (checkInterval(seconds, 55*60))
     {
-      writeToStack(stack, ClockStr::Five, &i);
-      writeToStack(stack, ClockStr::Before, &i);
+      writeToStack(stack, ClockStr::Five, false, &i);
+      writeToStack(stack, ClockStr::Before, useDialect, &i);
     }
   }
 
-  writeToStack(stack, getStateFromNum(hour), &i);
-  if (seconds <= 150 || seconds >= 3450)
+  writeToStack(stack, getStateFromNum(hour), useDialect, &i);
+  if (checkInterval(seconds, 0))
   {
-    if (stack[i - 1] == ClockStr::One)
+    if (stack[i - 1].state == ClockStr::One)
     {
-      writeToStack(stack, ClockStr::OneEven, &i);
+      writeToStack(stack, ClockStr::OneEven, useDialect, &i);
     }
     if (!useDialect)
     {
-      writeToStack(stack, ClockStr::Clock, &i);
+      writeToStack(stack, ClockStr::Clock, useDialect, &i);
     }
   }
   
+  return i;
+}
+
+String evalTime(time_t epochTime)
+{
+  TIMESTACK stack[WORDSTACK_SIZE];
+  String time;
+
+  u_int8_t i = getTimeStack(stack, epochTime);
+
   for (u_int8_t j = 0; j < i; ++j)
   {
-    dialectTmp = useDialect;
-    if (useDialect)
-    {
-      // Disable dialect for numbers indicating minutes (like five before)
-      if (isNum(stack[j]) &&
-          ((stack[i - 1] == ClockStr::Clock && j != i - 2) ||
-           (stack[i - 1] != ClockStr::Clock && j != i - 1)))
-      {
-        dialectTmp = false;
-      }
-    }
-    time += getString(stack[j], dialectTmp) + " ";
+    time += getString(&stack[j]) + " ";
   }
-  
   return time;
 }
 
