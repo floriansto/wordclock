@@ -28,6 +28,11 @@ bool writeToStack(TIMESTACK *stack, ClockStr state, bool useDialect,
   return true;
 }
 
+Times TimeProcessor::getTimeEnumFromSecs(int seconds) {
+  get_times_enum_from_num(seconds);
+  return Times::Full;
+}
+
 int TimeProcessor::getOffsetLowSecs() { return m_offsetLowSecs; }
 int TimeProcessor::getOffsetHighSecs() { return m_offsetHighSecs; }
 bool TimeProcessor::getDialect() { return m_useDialect; }
@@ -67,6 +72,8 @@ int TimeProcessor::getLowBorder(int time) {
 bool TimeProcessor::checkInterval(int seconds, int target) {
   return seconds >= getLowBorder(target) && seconds < getHighBorder(target);
 }
+
+bool TimeProcessor::setTime0(Timestack *stack) { return true; }
 
 bool TimeProcessor::setTime5(Timestack *stack) {
   bool ret = true;
@@ -176,12 +183,7 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
   ret = stack->push(TIMESTACK{ClockStr::It, getDialect()});
   ret &= stack->push(TIMESTACK{ClockStr::Is, getDialect()});
 
-  for (int j = 5; j < 60; j += 5) {
-    if (checkInterval(seconds, j * 60)) {
-      call_times_fcn(j);
-      break;
-    }
-  }
+  call_times_fcn(getTimeEnumFromSecs(seconds));
 
   ret &= stack->push(TIMESTACK{getStateFromNum(hour), getDialect()});
   if (checkInterval(seconds, 0)) {

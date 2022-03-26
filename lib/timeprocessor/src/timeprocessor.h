@@ -69,27 +69,6 @@ enum class Times {
   F(ClockStr::OneEven, 21, "EIN", "EINSE")                                     \
   F(ClockStr::None, 22, "UNBEKANNT", "UNBEKANNT")
 
-#define time_fcn(F)                                                            \
-  F(Times::Full, 0)                                                            \
-  F(Times::FiveAfter, 5)                                                       \
-  F(Times::TenAfter, 10)                                                       \
-  F(Times::QuaterPast, 15)                                                     \
-  F(Times::TwentyAfter, 20)                                                    \
-  F(Times::TwentyFiveAfter, 25)                                                \
-  F(Times::Half, 30)                                                           \
-  F(Times::TwentyFiveBefore, 35)                                               \
-  F(Times::TwentyBefore, 40)                                                   \
-  F(Times::QuaterBefore, 45)                                                   \
-  F(Times::TenBefore, 50)                                                      \
-  F(Times::FiveBefore, 55)
-
-#define times_fcn_decl(state, minutes) bool setTime##minutes(Timestack *stack);
-
-#define select_time_fcn(state, minutes)                                        \
-  case minutes:                                                                \
-    ret &= setTime##minutes(stack);                                            \
-    break;
-
 #define return_enum(val, num, val_human, val_dialect)                          \
   case num:                                                                    \
     return val;
@@ -113,8 +92,36 @@ enum class Times {
     time_table(return_str_dialect_enum) default : return "UNBEKANNT_DIALECT";  \
   }
 
-#define call_times_fcn(minutes)                                                \
-  switch (minutes) { time_fcn(select_time_fcn) default : break; }
+#define time_fcn(F)                                                            \
+  F(Times::Full, 0)                                                            \
+  F(Times::FiveAfter, 5)                                                       \
+  F(Times::TenAfter, 10)                                                       \
+  F(Times::QuaterPast, 15)                                                     \
+  F(Times::TwentyAfter, 20)                                                    \
+  F(Times::TwentyFiveAfter, 25)                                                \
+  F(Times::Half, 30)                                                           \
+  F(Times::TwentyFiveBefore, 35)                                               \
+  F(Times::TwentyBefore, 40)                                                   \
+  F(Times::QuaterBefore, 45)                                                   \
+  F(Times::TenBefore, 50)                                                      \
+  F(Times::FiveBefore, 55)
+
+#define times_fcn_decl(state, minutes) bool setTime##minutes(Timestack *stack);
+
+#define select_time_fcn(state, minutes)                                        \
+  case state:                                                                  \
+    ret &= setTime##minutes(stack);                                            \
+    break;
+
+#define return_time_fcn_enum(state, num)                                       \
+  if (checkInterval(seconds, num * 60)) {                                      \
+    return state;                                                              \
+  }
+
+#define get_times_enum_from_num(num) time_fcn(return_time_fcn_enum);
+
+#define call_times_fcn(state)                                                  \
+  switch (state) { time_fcn(select_time_fcn) default : break; }
 
 class TimeProcessor {
 public:
@@ -142,6 +149,7 @@ private:
   int getOffsetHighSecs();
   int getLowBorder(int seconds);
   int getHighBorder(int seconds);
+  Times getTimeEnumFromSecs(int seconds);
   bool checkInterval(int seconds, int target);
   bool getDialect();
   bool getQuaterPast();
