@@ -159,9 +159,7 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
   int seconds = ptm->tm_sec + ptm->tm_min * 60;
   bool ret;
   String time = "";
-  TIMESTACK *elem = nullptr;
-
-  bool useDialect = true;
+  TIMESTACK elem;
 
   if (hour == 0) {
     hour = 12;
@@ -175,8 +173,8 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
     hour = riseHour(hour);
   }
 
-  ret = stack->push(TIMESTACK{ClockStr::It, useDialect});
-  ret &= stack->push(TIMESTACK{ClockStr::Is, useDialect});
+  ret = stack->push(TIMESTACK{ClockStr::It, getDialect()});
+  ret &= stack->push(TIMESTACK{ClockStr::Is, getDialect()});
 
   for (int j = 5; j < 60; j += 5) {
     if (checkInterval(seconds, j * 60)) {
@@ -185,14 +183,14 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
     }
   }
 
-  ret &= stack->push(TIMESTACK{getStateFromNum(hour), useDialect});
+  ret &= stack->push(TIMESTACK{getStateFromNum(hour), getDialect()});
   if (checkInterval(seconds, 0)) {
-    ret &= stack->get(elem, stack->getSize() - 1);
-    if (elem->state == ClockStr::One) {
-      ret &= stack->push(TIMESTACK{ClockStr::OneEven, useDialect});
+    ret &= stack->get(&elem, stack->getSize() - 1);
+    if (!ret && elem.state == ClockStr::One) {
+      ret &= stack->push(TIMESTACK{ClockStr::OneEven, getDialect()});
     }
-    if (!useDialect) {
-      ret &= stack->push(TIMESTACK{ClockStr::Clock, useDialect});
+    if (!getDialect()) {
+      ret &= stack->push(TIMESTACK{ClockStr::Clock, getDialect()});
     }
   }
 
