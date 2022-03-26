@@ -1,7 +1,7 @@
 #ifndef __TIMEPROCESSOR_H__
 #define __TIMEPROCESSOR_H__
 
-#define WORDSTACK_SIZE 7
+#include <timestack.h>
 
 enum class ClockStr {
   None,
@@ -44,12 +44,6 @@ enum class Times {
   FiveBefore
 };
 
-typedef struct _timestack {
-  int size;
-  bool useDialect;
-  ClockStr state;
-} TIMESTACK;
-
 #define time_table(F)                                                          \
   F(ClockStr::Zero, 0, "NULL", "NULL")                                         \
   F(ClockStr::One, 1, "EINS", "EINSE")                                         \
@@ -89,12 +83,11 @@ typedef struct _timestack {
   F(Times::TenBefore, 50)                                                      \
   F(Times::FiveBefore, 55)
 
-#define times_fcn_decl(state, minutes)                                         \
-  bool setTime##minutes(TIMESTACK *stack, int *i);
+#define times_fcn_decl(state, minutes) bool setTime##minutes(Timestack *stack);
 
 #define select_time_fcn(state, minutes)                                        \
   case minutes:                                                                \
-    ret &= setTime##minutes(stack, &i);                                        \
+    ret &= setTime##minutes(stack);                                            \
     break;
 
 #define return_enum(val, num, val_human, val_dialect)                          \
@@ -135,7 +128,7 @@ public:
   void setOffsetLowSecs(int offsetLowSecs);
   void setOffsetHighSecs(int offsetHighSecs);
   void setDialect(bool useDialect);
-  int getTimeStack(TIMESTACK *stack, time_t epochTime);
+  bool getTimeStack(Timestack *stack, time_t epochTime);
   String evalTime(time_t epochTime);
 
 private:

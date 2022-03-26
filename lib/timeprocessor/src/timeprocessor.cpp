@@ -1,6 +1,7 @@
 #include <WString.h>
 #include <math.h>
 #include <time.h>
+#include <timestack.h>
 #include <timeprocessor.h>
 
 int riseHour(int hour) { return hour == 12 ? 1 : ++hour; }
@@ -66,98 +67,98 @@ bool TimeProcessor::checkInterval(int seconds, int target) {
   return seconds >= getLowBorder(target) && seconds < getHighBorder(target);
 }
 
-bool TimeProcessor::setTime5(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime5(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Five, false, i);
-  ret &= writeToStack(stack, ClockStr::After, getDialect(), i);
+  ret = stack->push(ClockStr::Five, false);
+  ret &= stack->push(ClockStr::After, getDialect());
   return ret;
 }
 
-bool TimeProcessor::setTime10(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime10(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Ten, false, i);
-  ret &= writeToStack(stack, ClockStr::After, getDialect(), i);
+  ret = stack->push(ClockStr::Ten, false);
+  ret &= stack->push(ClockStr::After, getDialect());
   return ret;
 }
 
-bool TimeProcessor::setTime15(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime15(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Quater, getDialect(), i);
+  ret = stack->push(ClockStr::Quater, getDialect());
   if (getQuaterPast())
-    ret &= writeToStack(stack, ClockStr::After, getDialect(), i);
+    ret &= stack->push(ClockStr::After, getDialect());
   return ret;
 }
 
-bool TimeProcessor::setTime20(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime20(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Ten, false, i);
-  ret &= writeToStack(stack, ClockStr::Before, getDialect(), i);
-  ret &= writeToStack(stack, ClockStr::Half, false, i);
+  ret = stack->push(ClockStr::Ten, false);
+  ret &= stack->push(ClockStr::Before, getDialect());
+  ret &= stack->push(ClockStr::Half, false);
   return ret;
 }
 
-bool TimeProcessor::setTime25(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime25(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Five, false, i);
-  ret &= writeToStack(stack, ClockStr::Before, getDialect(), i);
-  ret &= writeToStack(stack, ClockStr::Half, false, i);
+  ret = stack->push(ClockStr::Five, false);
+  ret &= stack->push(ClockStr::Before, getDialect());
+  ret &= stack->push(ClockStr::Half, false);
   return ret;
 }
 
-bool TimeProcessor::setTime30(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime30(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Half, getDialect(), i);
+  ret = stack->push(ClockStr::Half, getDialect());
   return ret;
 }
 
-bool TimeProcessor::setTime35(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime35(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Five, false, i);
-  ret &= writeToStack(stack, ClockStr::After, getDialect(), i);
-  ret &= writeToStack(stack, ClockStr::Half, false, i);
+  ret = stack->push(ClockStr::Five, false);
+  ret &= stack->push(ClockStr::After, getDialect());
+  ret &= stack->push(ClockStr::Half, false);
   return ret;
 }
 
-bool TimeProcessor::setTime40(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime40(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Ten, false, i);
-  ret &= writeToStack(stack, ClockStr::After, getDialect(), i);
-  ret &= writeToStack(stack, ClockStr::Half, false, i);
+  ret = stack->push(ClockStr::Ten, false);
+  ret &= stack->push(ClockStr::After, getDialect());
+  ret &= stack->push(ClockStr::Half, false);
   return ret;
 }
 
-bool TimeProcessor::setTime45(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime45(Timestack *stack) {
   bool ret = true;
   if (getThreeQuater()) {
-    ret = writeToStack(stack, ClockStr::ThreeQuater, getDialect(), i);
+    ret = stack->push(ClockStr::ThreeQuater, getDialect());
   } else {
-    ret = writeToStack(stack, ClockStr::Quater, getDialect(), i);
-    ret &= writeToStack(stack, ClockStr::Before, getDialect(), i);
+    ret = stack->push(ClockStr::Quater, getDialect());
+    ret &= stack->push(ClockStr::Before, getDialect());
   }
   return ret;
 }
 
-bool TimeProcessor::setTime50(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime50(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Ten, false, i);
-  ret &= writeToStack(stack, ClockStr::Before, getDialect(), i);
+  ret = stack->push(ClockStr::Ten, false);
+  ret &= stack->push(ClockStr::Before, getDialect());
   return ret;
 }
 
-bool TimeProcessor::setTime55(TIMESTACK *stack, int *i) {
+bool TimeProcessor::setTime55(Timestack *stack) {
   bool ret = true;
-  ret = writeToStack(stack, ClockStr::Five, false, i);
-  ret &= writeToStack(stack, ClockStr::Before, getDialect(), i);
+  ret = stack->push(ClockStr::Five, false);
+  ret &= stack->push(ClockStr::Before, getDialect());
   return ret;
 }
 
-int TimeProcessor::getTimeStack(TIMESTACK *stack, time_t epochTime) {
+bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
   struct tm *ptm = gmtime((time_t *)&epochTime);
   int hour = fmod(ptm->tm_hour, 12);
   int seconds = ptm->tm_sec + ptm->tm_min * 60;
-  int i = 0;
   bool ret;
   String time = "";
+  TIMESTACK *elem = nullptr;
 
   bool useDialect = true;
 
@@ -173,8 +174,8 @@ int TimeProcessor::getTimeStack(TIMESTACK *stack, time_t epochTime) {
     hour = riseHour(hour);
   }
 
-  ret = writeToStack(stack, ClockStr::It, useDialect, &i);
-  ret &= writeToStack(stack, ClockStr::Is, useDialect, &i);
+  ret = stack->push(ClockStr::It, useDialect);
+  ret &= stack->push(ClockStr::Is, useDialect);
 
   for (int j = 5; j < 60; j += 5) {
     if (checkInterval(seconds, j * 60)) {
@@ -183,27 +184,33 @@ int TimeProcessor::getTimeStack(TIMESTACK *stack, time_t epochTime) {
     }
   }
 
-  ret &= writeToStack(stack, getStateFromNum(hour), useDialect, &i);
+  ret &= stack->push(getStateFromNum(hour), useDialect);
   if (checkInterval(seconds, 0)) {
-    if (stack[i - 1].state == ClockStr::One) {
-      ret &= writeToStack(stack, ClockStr::OneEven, useDialect, &i);
+    ret &= stack->get(elem, stack->getSize() - 1);
+    if (elem->state == ClockStr::One) {
+      ret &= stack->push(ClockStr::OneEven, useDialect);
     }
     if (!useDialect) {
-      ret &= writeToStack(stack, ClockStr::Clock, useDialect, &i);
+      ret &= stack->push(ClockStr::Clock, useDialect);
     }
   }
 
-  return i;
+  return ret;
 }
 
 String TimeProcessor::evalTime(time_t epochTime) {
-  TIMESTACK stack[WORDSTACK_SIZE];
+  Timestack stack;
   String time;
+  TIMESTACK *elem = nullptr;
+  bool ret;
 
-  int i = getTimeStack(stack, epochTime);
+  ret = getTimeStack(&stack, epochTime);
 
-  for (int j = 0; j < i; ++j) {
-    time += getString(&stack[j]) + " ";
+  for (int j = 0; j < stack.getSize(); ++j) {
+    ret &= stack.pop(elem);
+    if (ret) {
+      time += getString(elem) + " ";
+    }
   }
   return time;
 }
