@@ -134,8 +134,6 @@ String evalTime(time_t epochTime)
     // Half
     else if (seconds >= 1650 && seconds < 1950)
     {
-      stack[i++] = ClockStr::Five;
-      writeToStack(stack, ClockStr::After, &i);
       writeToStack(stack, ClockStr::Half, &i);
     }
     // Five after half
