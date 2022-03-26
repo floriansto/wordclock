@@ -27,38 +27,44 @@ enum class ClockStr {
 
 
 #define time_table(F) \
-  F(ClockStr::Zero,        0,  "NULL") \
-  F(ClockStr::One,         1,  "EINS") \
-  F(ClockStr::Two,         2,  "ZWEI") \
-  F(ClockStr::Three,       3,  "DREI") \
-  F(ClockStr::Four,        4,  "VIER") \
-  F(ClockStr::Five,        5,  "FÜNF") \
-  F(ClockStr::Six,         6,  "SECHS") \
-  F(ClockStr::Seven,       7,  "SIEBEN") \
-  F(ClockStr::Eight,       8,  "ACHT") \
-  F(ClockStr::Nine,        9,  "NEUN") \
-  F(ClockStr::Ten,         10, "ZEHN") \
-  F(ClockStr::Eleven,      11, "ELF") \
-  F(ClockStr::Twelve,      12, "ZWÖLF") \
-  F(ClockStr::It,          13, "ES") \
-  F(ClockStr::Is,          14, "IST") \
-  F(ClockStr::Clock,       15, "UHR") \
-  F(ClockStr::Before,      16, "VOR") \
-  F(ClockStr::After,       17, "NACH") \
-  F(ClockStr::Quater,      18, "VIERTEL") \
-  F(ClockStr::ThreeQuater, 19, "DREIVIERTEL") \
-  F(ClockStr::Half,        20, "HALB") \
-  F(ClockStr::OneEven,     21, "EIN") \
-  F(ClockStr::None,        22, "UNBEKANNT")
+  F(ClockStr::Zero,        0,  true,  "NULL", "NULL") \
+  F(ClockStr::One,         1,  true,  "EINS", "EINSE") \
+  F(ClockStr::Two,         2,  true,  "ZWEI", "ZWEIE") \
+  F(ClockStr::Three,       3,  true,  "DREI", "DREIE") \
+  F(ClockStr::Four,        4,  true,  "VIER", "VIERE") \
+  F(ClockStr::Five,        5,  true,  "FÜNF", "FÜNFE") \
+  F(ClockStr::Six,         6,  true,  "SECHS", "SECHSE") \
+  F(ClockStr::Seven,       7,  true,  "SIEBEN", "SIEBENE") \
+  F(ClockStr::Eight,       8,  true,  "ACHT", "ACHTE") \
+  F(ClockStr::Nine,        9,  true,  "NEUN", "NEUNE") \
+  F(ClockStr::Ten,         10, true,  "ZEHN", "ZEHNE") \
+  F(ClockStr::Eleven,      11, true,  "ELF", "ELFE") \
+  F(ClockStr::Twelve,      12, true,  "ZWÖLF", "ZWÖLFE") \
+  F(ClockStr::It,          13, false, "ES", "S") \
+  F(ClockStr::Is,          14, false, "IST", "ISCH") \
+  F(ClockStr::Clock,       15, false, "UHR", "UHR") \
+  F(ClockStr::Before,      16, false, "VOR", "VOR") \
+  F(ClockStr::After,       17, false, "NACH", "NACH") \
+  F(ClockStr::Quater,      18, false, "VIERTEL", "VIERTEL") \
+  F(ClockStr::ThreeQuater, 19, false, "DREIVIERTEL", "DREIVIERTEL") \
+  F(ClockStr::Half,        20, false, "HALB", "HALB") \
+  F(ClockStr::OneEven,     21, false, "EIN", "EINSE") \
+  F(ClockStr::None,        22, false, "UNBEKANNT", "UNBEKANNT")
   
-#define print_val_enum(val, num, val_human) \
+#define print_val_enum(val, num, is_num, val_human, val_dialect) \
   case val: Serial.print(val_human); break;
   
-#define return_enum(val, num, val_human) \
+#define return_enum(val, num, is_num, val_human, val_dialect) \
   case num: return val;
   
-#define return_str_enum(val, num, val_human) \
+#define return_str_enum(val, num, is_num, val_human, val_dialect) \
   case val: return val_human;
+
+#define return_str_dialect_enum(val, num, is_num, val_human, val_dialect) \
+  case val: return val_dialect;
+
+#define return_is_num(val, num, is_num, val_human, val_dialect) \
+  case val: return is_num;
 
 #define print_state_enum(state) \
   switch(state) { \
@@ -76,4 +82,16 @@ enum class ClockStr {
   switch(state) { \
     time_table(return_str_enum) \
     default: return "UNBEKANNT"; \
+  }
+
+#define get_str_dialect_from_enum(state) \
+  switch(state) { \
+    time_table(return_str_dialect_enum) \
+    default: return "UNBEKANNT"; \
+  }
+
+#define get_is_num_from_enum(state) \
+  switch(state) { \
+    time_table(return_is_num) \
+    default: return false; \
   }
