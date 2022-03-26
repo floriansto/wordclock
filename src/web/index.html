@@ -36,6 +36,9 @@
     <p>LED Brightness Down</p><a class="button button-off" onclick="sendData('down')">DARKER</a>
     <p>Current Brightness<br><span id="LEDBrightness">0</span> %</p>
     <p>Current Time<br><span id="CurrentTime">0</span></p>
+    
+    <h1>Time in words</h1>
+    <h2><span id="WordTime">None</span></h2>
 
     <script>
         function sendData(brightness) {
@@ -73,6 +76,16 @@
                 }
             };
             xhttp.open("GET", "readTime", true);
+            xhttp.send();
+
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    document.getElementById("WordTime").innerHTML =
+                        this.responseText;
+                }
+            };
+            xhttp.open("GET", "readWordTime", true);
             xhttp.send();
         }
     </script>
