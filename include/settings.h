@@ -18,6 +18,7 @@ const u_int16_t offsetLowSecs = 150;
 const u_int16_t offsetHighSecs = 300 - offsetLowSecs;
 const bool useQuaterPast = true;
 const bool useThreeQuater = true;
+const s8_t hourOffsetFromUTC = 1;
 bool useDialect = false;
 
 #endif

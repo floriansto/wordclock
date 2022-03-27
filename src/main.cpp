@@ -73,7 +73,40 @@ void handleGetWordTime() {
 }
 
 void handleGetDialect() {
-  server.send(200, "text/plain", String((int) useDialect));
+  server.send(200, "text/plain", String((int)useDialect));
+}
+
+/**
+ * European daylight savings time calculation by "jurs" from german arduino
+ * forum. Idea from https://forum.arduino.cc/t/rtc-mit-sommerzeit/168068/2
+ * Daylight saving time is active from last sunday in march till last sunday in
+ * october
+ *
+ * @param epochTime Time in seconds since 01.01.1900
+ * @param tzHours Time offset in hours from UTC time
+ *
+ * @return true when daylight time is active, false if not
+ */
+boolean summertime_EU(time_t epochTime, s8_t tzHours) {
+  struct tm *ptm = gmtime((time_t *)&epochTime);
+  u_int16_t year = ptm->tm_year + 1900;
+  u_int8_t month = ptm->tm_mon + 1;
+  u_int8_t day = ptm->tm_mday;
+  u_int8_t hour = ptm->tm_hour;
+
+  if (month < 3 || month > 10) {
+    return false;
+  }
+  if (month > 3 && month < 10) {
+    return true;
+  }
+
+  return (month == 3 &&
+          (hour + 24 * day) >=
+              (1 + tzHours + 24 * (31 - (5 * year / 4 + 4) % 7))) ||
+         (month == 10 &&
+          (hour + 24 * day) <
+              (1 + tzHours + 24 * (31 - (5 * year / 4 + 1) % 7)));
 }
 
 void setup() {
@@ -109,17 +142,25 @@ void setup() {
   timeClient.begin();
   Serial.println("NTP client started");
 
-  timeClient.setTimeOffset(3600);
+  timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
 }
 
 unsigned long lastRun = 0;
 u_int16_t evalTimeEvery = 60000;
+unsigned long lastDaylightCheck = 0;
+u_int32_t checkDaylightTime = 3600000;
 
 void loop() {
   u_int16_t color;
 
   timeClient.update();
   server.handleClient();
+
+  if (millis() - lastDaylightCheck > checkDaylightTime) {
+    if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
+      timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
+    }
+  }
 
   if (millis() - lastRun > evalTimeEvery) {
     lastRun = millis();
