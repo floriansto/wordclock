@@ -45,6 +45,18 @@ void handleBrightness() {
   matrix.setBrightness(brightness * scale);
 }
 
+void handleDialect() {
+  String state = server.arg("switchDialect");
+  Serial.println(state);
+  if (state == "true") {
+    useDialect = true;
+  } else {
+    useDialect = false;
+  }
+  wordProcessor->setDialect(useDialect);
+  server.send(200, "text/plain", state);
+}
+
 void handleNotFound() { server.send(404, "text/plain", "Not found"); }
 
 void handleGetBrightness() {
@@ -58,6 +70,10 @@ void handleGetTime() {
 void handleGetWordTime() {
   server.send(200, "text/plain",
               wordProcessor->evalTime(timeClient.getEpochTime()));
+}
+
+void handleGetDialect() {
+  server.send(200, "text/plain", String((int) useDialect));
 }
 
 void setup() {
@@ -80,9 +96,11 @@ void setup() {
   server.on("/", handleOnConnect);
   server.on("/style.css", handleCss);
   server.on("/setBrightness", handleBrightness);
+  server.on("/setDialect", handleDialect);
   server.on("/readBrightness", handleGetBrightness);
   server.on("/readTime", handleGetTime);
   server.on("/readWordTime", handleGetWordTime);
+  server.on("/readDialect", handleGetDialect);
   server.onNotFound(handleNotFound);
 
   server.begin();

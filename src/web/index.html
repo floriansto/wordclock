@@ -36,9 +36,16 @@
     <p>LED Brightness Down</p><a class="button button-off" onclick="sendData('down')">DARKER</a>
     <p>Current Brightness<br><span id="LEDBrightness">0</span> %</p>
     <p>Current Time<br><span id="CurrentTime">0</span></p>
-    
+
     <h1>Time in words</h1>
     <h2><span id="WordTime">None</span></h2>
+
+    <h1>Settings</h1>
+    Use dialect
+    <label class="switch">
+      <input id="switchDialect" type="checkbox" value="switchDialect" onclick="toggleDialect()">
+    </label>
+    <div>
 
     <script>
         function sendData(brightness) {
@@ -53,11 +60,38 @@
             xhttp.send();
         }
 
+        function toggleDialect() {
+            var checkBox = document.getElementById("switchDialect")
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    document.getElementById("switchDialect").innerHTML =
+                        this.responseText;
+                }
+            };
+            xhttp.open("GET", "setDialect?switchDialect=" + checkBox.checked, true);
+            xhttp.send();
+        }
+
         setInterval(function () {
             getData();
         }, 500);
 
-        function getData() {
+        setInterval(function () {
+            getDataLong();
+        }, 10000);
+
+        function getDataLong() {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    document.getElementById("switchDialect").checked = parseInt(this.responseText);
+                }
+            };
+            xhttp.open("GET", "readDialect", true);
+            xhttp.send();
+
+
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function () {
                 if (this.readyState == 4 && this.status == 200) {
@@ -67,7 +101,9 @@
             };
             xhttp.open("GET", "readBrightness", true);
             xhttp.send();
+        }
 
+        function getData() {
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function () {
                 if (this.readyState == 4 && this.status == 200) {
