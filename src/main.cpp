@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ESP8266WebServer.h>
 #include <NTPClient.h>
+#include <RTClib.h>
 #include <WiFiManager.h>
 #include <math.h>
 #include <timeprocessor.h>
@@ -18,6 +19,7 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
 
 WiFiManager wifiManager;
 WiFiUDP ntpUDP;
+RTC_DS3231 rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 ESP8266WebServer server(80);
 TimeProcessor *timeProcessor =
@@ -117,6 +119,7 @@ boolean summertime_EU(time_t epochTime, s8_t tzHours) {
 
 void setup() {
   Serial.begin(9600);
+  delay(1000);
 
   matrix.begin();
   matrix.setTextWrap(false);
@@ -126,10 +129,18 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   wifiManager.setConfigPortalTimeout(60);
+  wifiManager.setConfigPortalBlocking(false);
   if (wifiManager.autoConnect("Wordclock")) {
     Serial.println("Connected to wifi :)");
   } else {
     Serial.println("Configportal at 192.168.4.1 running");
+  }
+
+  if (!rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    while (1)
+      delay(10);
   }
 
   server.on("/", handleOnConnect);
@@ -148,24 +159,57 @@ void setup() {
   timeClient.begin();
   Serial.println("NTP client started");
 
-  timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
+  timeClient.update();
+  if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
+    timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
+  } else {
+    timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
+  }
+
+  timeClient.update();
+  if (rtc.lostPower()) {
+    time_t epochTime = timeClient.getEpochTime();
+    struct tm *ptm = gmtime((time_t *)&epochTime);
+    u_int16_t year = ptm->tm_year + 1900;
+    u_int8_t month = ptm->tm_mon + 1;
+    u_int8_t day = ptm->tm_mday;
+
+    rtc.adjust(DateTime(year, month, day, timeClient.getHours(),
+                        timeClient.getMinutes(), timeClient.getSeconds()));
+    Serial.println("RTC lost power");
+  }
+}
+
+DateTime unixtimeToEpochtime(DateTime unixtime) {
+  DateTime epochStart = DateTime(1900, 1, 1, 0, 0, 0);
+  return unixtime + (unixtime - epochStart);
+}
+
+time_t getTime() {
+  return rtc.now().secondstime();
+  if (WiFi.status() != WL_CONNECTED) {
+    return unixtimeToEpochtime(rtc.now()).secondstime();
+  } else {
+    return timeClient.getEpochTime();
+  }
 }
 
 unsigned long lastRun = 0;
-u_int16_t evalTimeEvery = 60000;
+u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
-u_int32_t checkDaylightTime = 3600000;
+u_int32_t checkDaylightTime = 1000;
 
 void loop() {
   u_int16_t color;
-  char wordTime[NUMPIXELS];
 
+  DateTime now = rtc.now();
+
+  wifiManager.process();
   timeClient.update();
   server.handleClient();
 
   color = matrix.Color(0, 255, 0);
-  error |= (WiFi.status() == WL_CONNECT_FAILED ||
-            WiFi.status() == WL_CONNECTION_LOST);
+  error = WiFi.status() != WL_CONNECTED;
   if (error) {
     color = matrix.Color(255, 0, 0);
   }
@@ -180,18 +224,28 @@ void loop() {
     return;
   }
 
+  timeProcessor->update(getTime());
+
   if (millis() - lastDaylightCheck > checkDaylightTime) {
     if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
       timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
+    } else {
+      timeClient.setTimeOffset((hourOffsetFromUTC)*3600);
     }
   }
 
   if (millis() - lastRun > evalTimeEvery) {
     lastRun = millis();
+    Serial.println("===========");
     Serial.println(timeClient.getFormattedTime());
-    if (timeProcessor->getWordTime(wordTime)) {
-      Serial.println(wordTime);
-    }
+    Serial.print(now.hour());
+    Serial.print(":");
+    Serial.print(now.minute());
+    Serial.print(":");
+    Serial.println(now.second());
+
+    Serial.println(timeClient.getEpochTime());
+    Serial.println(now.secondstime());
   }
 
   delay(10);
