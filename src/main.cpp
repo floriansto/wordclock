@@ -33,16 +33,24 @@ u_int8_t brightness = INITIAL_BRIGHTNESS;
 
 TIME getTime() {
   TIME time;
-  DateTime now{rtc.now()};
 
   if (WiFi.status() != WL_CONNECTED) {
+    DateTime now{rtc.now()};
     time.hour = now.hour();
     time.minute = now.minute();
     time.seconds = now.second();
+    time.year = now.year();
+    time.month = now.month();
+    time.day = now.day();
   } else {
     time.hour = timeClient.getHours();
     time.minute = timeClient.getMinutes();
     time.seconds = timeClient.getSeconds();
+    time_t epochTime = timeClient.getEpochTime();
+    struct tm *ptm = gmtime((time_t *)&epochTime);
+    time.year = ptm->tm_year + 1900;
+    time.month = ptm->tm_mon + 1;
+    time.day = ptm->tm_mday;
   }
   return time;
 }
@@ -115,12 +123,11 @@ void handleGetDialect() {
  *
  * @return true when daylight time is active, false if not
  */
-boolean summertime_EU(time_t epochTime, s8_t tzHours) {
-  struct tm *ptm = gmtime((time_t *)&epochTime);
-  u_int16_t year = ptm->tm_year + 1900;
-  u_int8_t month = ptm->tm_mon + 1;
-  u_int8_t day = ptm->tm_mday;
-  u_int8_t hour = ptm->tm_hour;
+boolean summertime_EU(TIME time, s8_t tzHours) {
+  u_int16_t year = time.year;
+  u_int8_t month = time.month;
+  u_int8_t day = time.day;
+  u_int8_t hour = time.hour;
 
   if (month < 3 || month > 10) {
     return false;
@@ -180,23 +187,19 @@ void setup() {
   Serial.println("NTP client started");
 
   timeClient.update();
-  if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
+
+  TIME time = getTime();
+  if (summertime_EU(time, hourOffsetFromUTC)) {
     timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
   } else {
     timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
   }
-
   timeClient.update();
-  if (rtc.lostPower()) {
-    time_t epochTime = timeClient.getEpochTime();
-    struct tm *ptm = gmtime((time_t *)&epochTime);
-    u_int16_t year = ptm->tm_year + 1900;
-    u_int8_t month = ptm->tm_mon + 1;
-    u_int8_t day = ptm->tm_mday;
 
-    rtc.adjust(DateTime(year, month, day, timeClient.getHours(),
-                        timeClient.getMinutes(), timeClient.getSeconds()));
+  if (rtc.lostPower() && WiFi.status() == WL_CONNECTED) {
     Serial.println("RTC lost power");
+    rtc.adjust(DateTime(time.year, time.month, time.day, time.hour, time.minute,
+                        time.seconds));
   }
 }
 
@@ -204,6 +207,8 @@ unsigned long lastRun = 0;
 u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
 u_int32_t checkDaylightTime = 1000;
+unsigned long lastRtcSync = 0;
+u_int16_t syncRtc = 24 * 3600;
 
 void loop() {
   u_int16_t color;
@@ -232,11 +237,13 @@ void loop() {
   }
 
   if (millis() - lastDaylightCheck > checkDaylightTime) {
-    if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
+    if (summertime_EU(time, hourOffsetFromUTC)) {
       timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
     } else {
       timeClient.setTimeOffset((hourOffsetFromUTC)*3600);
     }
+    time = getTime();
+    lastDaylightCheck = millis();
   }
 
   if (millis() - lastRun > evalTimeEvery) {
@@ -248,6 +255,12 @@ void loop() {
     Serial.print(now.minute());
     Serial.print(":");
     Serial.println(now.second());
+  }
+
+  if (WiFi.status() == WL_CONNECTED && millis() - lastRtcSync > syncRtc) {
+    rtc.adjust(DateTime(time.year, time.month, time.day, time.hour, time.minute,
+                        time.seconds));
+    lastRtcSync = millis();
   }
 
   delay(10);
