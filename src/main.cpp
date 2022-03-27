@@ -8,6 +8,7 @@
 #include <math.h>
 #include <timeprocessor.h>
 
+#include "../include/main.h"
 #include "../include/settings.h"
 #include "../includes_gen/css.h"
 #include "../includes_gen/index.h"
@@ -29,6 +30,22 @@ TimeProcessor *timeProcessor =
 bool error = false;
 
 u_int8_t brightness = INITIAL_BRIGHTNESS;
+
+TIME getTime() {
+  TIME time;
+  DateTime now{rtc.now()};
+
+  if (WiFi.status() != WL_CONNECTED) {
+    time.hour = now.hour();
+    time.minute = now.minute();
+    time.seconds = now.second();
+  } else {
+    time.hour = timeClient.getHours();
+    time.minute = timeClient.getMinutes();
+    time.seconds = timeClient.getSeconds();
+  }
+  return time;
+}
 
 void handleOnConnect() {
   brightness = INITIAL_BRIGHTNESS;
@@ -67,7 +84,10 @@ void handleGetBrightness() {
 }
 
 void handleGetTime() {
-  server.send(200, "text/plain", String(timeClient.getFormattedTime()));
+  TIME time = getTime();
+  char timeStr[12];
+  sprintf(timeStr, "%02d:%02d:%02d", time.hour, time.minute, time.seconds);
+  server.send(200, "text/plain", timeStr);
 }
 
 void handleGetWordTime() {
@@ -180,20 +200,6 @@ void setup() {
   }
 }
 
-DateTime unixtimeToEpochtime(DateTime unixtime) {
-  DateTime epochStart = DateTime(1900, 1, 1, 0, 0, 0);
-  return unixtime + (unixtime - epochStart);
-}
-
-time_t getTime() {
-  return rtc.now().secondstime();
-  if (WiFi.status() != WL_CONNECTED) {
-    return unixtimeToEpochtime(rtc.now()).secondstime();
-  } else {
-    return timeClient.getEpochTime();
-  }
-}
-
 unsigned long lastRun = 0;
 u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
@@ -202,6 +208,7 @@ u_int32_t checkDaylightTime = 1000;
 void loop() {
   u_int16_t color;
 
+  TIME time = getTime();
   DateTime now = rtc.now();
 
   wifiManager.process();
@@ -218,13 +225,11 @@ void loop() {
   matrix.fillCircle(7, 2, 2, color);
   matrix.show();
 
-  if (!timeProcessor->update(timeClient.getEpochTime())) {
+  if (!timeProcessor->update(time.hour, time.minute, time.seconds)) {
     Serial.println("Error occured");
     error = true;
     return;
   }
-
-  timeProcessor->update(getTime());
 
   if (millis() - lastDaylightCheck > checkDaylightTime) {
     if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
@@ -243,9 +248,6 @@ void loop() {
     Serial.print(now.minute());
     Serial.print(":");
     Serial.println(now.second());
-
-    Serial.println(timeClient.getEpochTime());
-    Serial.println(now.secondstime());
   }
 
   delay(10);
