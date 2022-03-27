@@ -38,5 +38,4 @@ def main():
     file_to_c_code(css, c_css)
 
 
-if __name__ == "__main__":
-    main()
+main()
