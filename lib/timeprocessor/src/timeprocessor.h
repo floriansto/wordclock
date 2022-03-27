@@ -161,8 +161,6 @@ private:
   time_fcn(times_fcn_decl);
   int getOffsetLowSecs();
   int getOffsetHighSecs();
-  int getLowBorder(int seconds);
-  int getHighBorder(int seconds);
   Times getTimeEnumFromSecs(int seconds);
   bool checkInterval(int seconds, int target);
   bool getDialect();
@@ -171,6 +169,8 @@ private:
   Timestack *getStack();
   bool getTimeStack(Timestack *stack, time_t epochTime);
   bool calcWordTime();
+  bool checkLowBorder(int seconds, int target);
+  bool checkHighBorder(int seconds, int target);
 };
 
 #endif
