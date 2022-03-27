@@ -65,20 +65,32 @@ void TimeProcessor::setOffsetLowSecs(int offsetLowSecs) {
 
 void TimeProcessor::setDialect(bool dialect) { m_useDialect = dialect; }
 
-int TimeProcessor::getHighBorder(int time) {
-  int offsetHighSecs = getOffsetHighSecs();
-  return time > 3600 - offsetHighSecs ? time - 3600 - offsetHighSecs
-                                      : time + offsetHighSecs;
-}
-
-int TimeProcessor::getLowBorder(int time) {
-  int offsetLowSecs = getOffsetLowSecs();
-  return time < offsetLowSecs ? 3600 + time - offsetLowSecs
-                              : time - offsetLowSecs;
-}
-
 bool TimeProcessor::checkInterval(int seconds, int target) {
-  return seconds >= getLowBorder(target) && seconds < getHighBorder(target);
+  int lowBorder{0};
+  int highBorder{0};
+
+  if (target - getOffsetLowSecs() > 0 && target + getOffsetHighSecs() < 3600) {
+    lowBorder = target - getOffsetLowSecs();
+    highBorder = target + getOffsetHighSecs();
+    return seconds >= lowBorder && seconds < highBorder;
+  }
+
+  if (target - getOffsetLowSecs() <= 0) {
+    lowBorder = 3600 + target - getOffsetLowSecs();
+  } else {
+    lowBorder = target - getOffsetLowSecs();
+  }
+
+  highBorder = target + getOffsetHighSecs();
+  if (highBorder < 3600) {
+    highBorder += 3600;
+  }
+
+  if (seconds < fmod(highBorder, 3600)) {
+    seconds += 3600;
+  }
+
+  return seconds >= lowBorder && seconds < highBorder;
 }
 
 bool TimeProcessor::setTime0(Timestack *stack) { return true; }
@@ -179,7 +191,7 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
     hour = 12;
   }
 
-  if (seconds > getHighBorder(15 * 60)) {
+  if (seconds > (15 * 60) + getOffsetHighSecs()) {
     hour = riseHour(hour);
   }
 
