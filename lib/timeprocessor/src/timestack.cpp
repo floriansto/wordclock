@@ -1,4 +1,4 @@
-#include <timestack.h>
+#include "timestack.h"
 
 bool Timestack::push(TIMESTACK elem) {
   if (m_stacksize >= WORDSTACK_SIZE) {

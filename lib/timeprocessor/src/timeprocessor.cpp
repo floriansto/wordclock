@@ -1,9 +1,8 @@
-#include <Arduino.h>
-#include <WString.h>
+#include <cstring>
 #include <math.h>
 #include <time.h>
-#include <timeprocessor.h>
-#include <timestack.h>
+#include "timeprocessor.h"
+#include "timestack.h"
 
 int riseHour(int hour) { return hour == 12 ? 1 : ++hour; }
 

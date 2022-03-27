@@ -1,7 +1,7 @@
 #ifndef __TIMEPROCESSOR_H__
 #define __TIMEPROCESSOR_H__
 
-#include <timestack.h>
+#include "timestack.h"
 
 enum class ClockStr {
   None,
