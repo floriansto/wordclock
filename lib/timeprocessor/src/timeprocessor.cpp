@@ -9,24 +9,25 @@ int riseHour(int hour) { return hour == 12 ? 1 : ++hour; }
 
 ClockStr getStateFromNum(int num) { get_enum_from_num(num); }
 
-String getString(TIMESTACK *element) {
-  if (element->useDialect) {
-    get_str_dialect_from_enum(element->state);
-  } else {
-    get_str_from_enum(element->state);
+bool getWord(TIMESTACK *elem, char *word, int maxWordLen, int *i) {
+  get_word(elem->state, elem->useDialect);
+  return true;
+}
+
+TimeProcessor::TimeProcessor(bool useDialect, bool useQuaterPast,
+                             bool useThreeQuater, int offsetLowSecs,
+                             int offsetHighSecs, int numLetters)
+    : m_useDialect{useDialect}, m_useQuaterPast{useQuaterPast},
+      m_useThreeQuater{useThreeQuater}, m_offsetLowSecs{offsetLowSecs},
+      m_offsetHighSecs{offsetHighSecs}, m_numLetters{numLetters} {
+  m_error = false;
+  m_wordtime = (char *)malloc(sizeof(char) * m_numLetters);
+  if (m_wordtime == nullptr) {
+    m_error = true;
   }
 }
 
-bool writeToStack(TIMESTACK *stack, ClockStr state, bool useDialect,
-                  int *stack_size) {
-  if (*stack_size == WORDSTACK_SIZE) {
-    return false;
-  }
-  stack[*stack_size].state = state;
-  stack[*stack_size].useDialect = useDialect;
-  ++(*stack_size);
-  return true;
-}
+TimeProcessor::~TimeProcessor() { free(m_wordtime); }
 
 Times TimeProcessor::getTimeEnumFromSecs(int seconds) {
   get_times_enum_from_num(seconds);
@@ -38,6 +39,14 @@ int TimeProcessor::getOffsetHighSecs() { return m_offsetHighSecs; }
 bool TimeProcessor::getDialect() { return m_useDialect; }
 bool TimeProcessor::getQuaterPast() { return m_useQuaterPast; }
 bool TimeProcessor::getThreeQuater() { return m_useThreeQuater; }
+Timestack *TimeProcessor::getStack() { return &m_stack; }
+bool TimeProcessor::getWordTime(char *wordTime) {
+  if (m_error) {
+    return false;
+  }
+  strcpy(wordTime, m_wordtime);
+  return true;
+}
 
 void TimeProcessor::setQuaterPast(bool useQuaterPast) {
   m_useQuaterPast = useQuaterPast;
@@ -165,7 +174,6 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
   int hour = fmod(ptm->tm_hour, 12);
   int seconds = ptm->tm_sec + ptm->tm_min * 60;
   bool ret;
-  String time = "";
   TIMESTACK elem;
 
   if (hour == 0) {
@@ -199,19 +207,52 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
   return ret;
 }
 
-String TimeProcessor::evalTime(time_t epochTime) {
-  Timestack stack;
-  String time;
+bool TimeProcessor::update(time_t epochTime) {
+  if (m_error) {
+    return false;
+  }
+
+  m_stack.init();
+
+  if (!getTimeStack(getStack(), epochTime)) {
+    return false;
+  }
+
+  if (!calcWordTime()) {
+    return false;
+  }
+
+  return true;
+}
+
+bool TimeProcessor::calcWordTime() {
+  Timestack *stack;
   TIMESTACK elem;
-  bool ret;
+  char word[12];
+  int wordLen{0};
+  int cursor{0};
 
-  ret = getTimeStack(&stack, epochTime);
+  stack = getStack();
 
-  for (int j = 0; j < stack.getSize(); ++j) {
-    ret = stack.get(&elem, j);
-    if (ret) {
-      time += getString(&elem) + " ";
+  memset(m_wordtime, 0, sizeof(char) * m_numLetters);
+
+  for (int j = 0; j < stack->getSize(); ++j) {
+    if (!stack->get(&elem, j)) {
+      return false;
+    }
+    memset(word, 0, sizeof(word));
+    if (!getWord(&elem, word, sizeof(word) / sizeof(char), &wordLen)) {
+      return false;
+    }
+    if (cursor + wordLen < m_numLetters) {
+      if (cursor > 0) {
+        m_wordtime[cursor++] = ' ';
+      }
+      memcpy(&m_wordtime[cursor], word, sizeof(char) * wordLen);
+      cursor += wordLen;
+    } else {
+      return false;
     }
   }
-  return time;
+  return true;
 }
