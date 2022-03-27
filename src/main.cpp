@@ -20,8 +20,9 @@ WiFiManager wifiManager;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 ESP8266WebServer server(80);
-TimeProcessor *wordProcessor = new TimeProcessor(
-    useDialect, useQuaterPast, useThreeQuater, offsetLowSecs, offsetHighSecs);
+TimeProcessor *timeProcessor =
+    new TimeProcessor(useDialect, useQuaterPast, useThreeQuater, offsetLowSecs,
+                      offsetHighSecs, NUMPIXELS);
 
 bool error = false;
 
@@ -53,7 +54,7 @@ void handleDialect() {
   } else {
     useDialect = false;
   }
-  wordProcessor->setDialect(useDialect);
+  timeProcessor->setDialect(useDialect);
   server.send(200, "text/plain", state);
 }
 
@@ -68,8 +69,13 @@ void handleGetTime() {
 }
 
 void handleGetWordTime() {
-  server.send(200, "text/plain",
-              wordProcessor->evalTime(timeClient.getEpochTime()));
+  char wordTime[NUMPIXELS];
+  char error[] = "Error getting the time";
+  if (timeProcessor->getWordTime(wordTime)) {
+    server.send(200, "text/plain", wordTime);
+  } else {
+    server.send(200, "text/plain", error);
+  }
 }
 
 void handleGetDialect() {
@@ -152,21 +158,10 @@ u_int32_t checkDaylightTime = 3600000;
 
 void loop() {
   u_int16_t color;
+  char wordTime[NUMPIXELS];
 
   timeClient.update();
   server.handleClient();
-
-  if (millis() - lastDaylightCheck > checkDaylightTime) {
-    if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
-      timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
-    }
-  }
-
-  if (millis() - lastRun > evalTimeEvery) {
-    lastRun = millis();
-    Serial.println(timeClient.getFormattedTime());
-    Serial.println(wordProcessor->evalTime(timeClient.getEpochTime()));
-  }
 
   color = matrix.Color(0, 255, 0);
   error |= (WiFi.status() == WL_CONNECT_FAILED ||
@@ -178,5 +173,26 @@ void loop() {
   matrix.fillScreen(0);
   matrix.fillCircle(7, 2, 2, color);
   matrix.show();
+
+  if (!timeProcessor->update(timeClient.getEpochTime())) {
+    Serial.println("Error occured");
+    error = true;
+    return;
+  }
+
+  if (millis() - lastDaylightCheck > checkDaylightTime) {
+    if (summertime_EU(timeClient.getEpochTime(), hourOffsetFromUTC)) {
+      timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
+    }
+  }
+
+  if (millis() - lastRun > evalTimeEvery) {
+    lastRun = millis();
+    Serial.println(timeClient.getFormattedTime());
+    if (timeProcessor->getWordTime(wordTime)) {
+      Serial.println(wordTime);
+    }
+  }
+
   delay(10);
 }
