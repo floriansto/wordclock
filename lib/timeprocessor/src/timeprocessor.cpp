@@ -1,8 +1,8 @@
+#include "timeprocessor.h"
+#include "timestack.h"
 #include <cstring>
 #include <math.h>
 #include <time.h>
-#include "timeprocessor.h"
-#include "timestack.h"
 
 int riseHour(int hour) { return hour == 12 ? 1 : ++hour; }
 
@@ -21,6 +21,9 @@ TimeProcessor::TimeProcessor(bool useDialect, bool useQuaterPast,
       m_offsetHighSecs{offsetHighSecs}, m_numLetters{numLetters} {
   m_error = false;
   m_wordtime = (char *)malloc(sizeof(char) * m_numLetters);
+  m_hour = 0;
+  m_minutes = 0;
+  m_seconds = 0;
   if (m_wordtime == nullptr) {
     m_error = true;
   }
@@ -180,11 +183,10 @@ bool TimeProcessor::setTime55(Timestack *stack) {
   return ret;
 }
 
-bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
-  struct tm *ptm = gmtime((time_t *)&epochTime);
-  int hour = fmod(ptm->tm_hour, 12);
-  int seconds = ptm->tm_sec + ptm->tm_min * 60;
-  bool ret;
+bool TimeProcessor::getTimeStack(Timestack *stack) {
+  bool ret{true};
+  int hour = fmod(m_hour, 12);
+  int seconds{m_seconds + m_minutes * 60};
   TIMESTACK elem;
 
   if (hour == 0) {
@@ -218,14 +220,18 @@ bool TimeProcessor::getTimeStack(Timestack *stack, time_t epochTime) {
   return ret;
 }
 
-bool TimeProcessor::update(time_t epochTime) {
+bool TimeProcessor::update(int hour, int minutes, int seconds) {
+  m_hour = hour;
+  m_seconds = seconds;
+  m_minutes = minutes;
+
   if (m_error) {
     return false;
   }
 
   m_stack.init();
 
-  if (!getTimeStack(getStack(), epochTime)) {
+  if (!getTimeStack(getStack())) {
     return false;
   }
 

@@ -144,10 +144,13 @@ public:
   void setOffsetLowSecs(int offsetLowSecs);
   void setOffsetHighSecs(int offsetHighSecs);
   void setDialect(bool useDialect);
-  bool update(time_t epochTime);
+  bool update(int hour, int minute, int seconds);
   bool getWordTime(char *wordTime);
 
 private:
+  int m_hour;
+  int m_minutes;
+  int m_seconds;
   bool m_useDialect;
   bool m_useQuaterPast;
   bool m_useThreeQuater;
@@ -167,7 +170,7 @@ private:
   bool getQuaterPast();
   bool getThreeQuater();
   Timestack *getStack();
-  bool getTimeStack(Timestack *stack, time_t epochTime);
+  bool getTimeStack(Timestack *stack);
   bool calcWordTime();
   bool checkLowBorder(int seconds, int target);
   bool checkHighBorder(int seconds, int target);
