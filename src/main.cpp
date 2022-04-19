@@ -208,7 +208,7 @@ u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
 u_int32_t checkDaylightTime = 1000;
 unsigned long lastRtcSync = 0;
-u_int16_t syncRtc = 24 * 3600;
+u_int32_t syncRtc = 24 * 3600;
 
 void loop() {
   u_int16_t color;
