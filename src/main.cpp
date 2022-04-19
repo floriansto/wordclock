@@ -27,31 +27,50 @@ TimeProcessor *timeProcessor =
     new TimeProcessor(useDialect, useQuaterPast, useThreeQuater, offsetLowSecs,
                       offsetHighSecs, NUMPIXELS);
 
+bool rtcFound = true;
+bool rtcValid = true;
 bool error = false;
+bool wifiConnected = false;
 
 u_int8_t brightness = INITIAL_BRIGHTNESS;
 
+TIME getTimeRtc() {
+  TIME time;
+  DateTime now{rtc.now()};
+  time.hour = now.hour();
+  time.minute = now.minute();
+  time.seconds = now.second();
+  time.year = now.year();
+  time.month = now.month();
+  time.day = now.day();
+  time.valid = true;
+  return time;
+}
+
+TIME getTimeNtp() {
+  TIME time;
+  timeClient.update();
+  time.hour = timeClient.getHours();
+  time.minute = timeClient.getMinutes();
+  time.seconds = timeClient.getSeconds();
+  time_t epochTime = timeClient.getEpochTime();
+  struct tm *ptm = gmtime((time_t *)&epochTime);
+  time.year = ptm->tm_year + 1900;
+  time.month = ptm->tm_mon + 1;
+  time.day = ptm->tm_mday;
+  time.valid = true;
+  return time;
+}
+
 TIME getTime() {
   TIME time;
-
-  if (WiFi.status() != WL_CONNECTED) {
-    DateTime now{rtc.now()};
-    time.hour = now.hour();
-    time.minute = now.minute();
-    time.seconds = now.second();
-    time.year = now.year();
-    time.month = now.month();
-    time.day = now.day();
-  } else {
-    time.hour = timeClient.getHours();
-    time.minute = timeClient.getMinutes();
-    time.seconds = timeClient.getSeconds();
-    time_t epochTime = timeClient.getEpochTime();
-    struct tm *ptm = gmtime((time_t *)&epochTime);
-    time.year = ptm->tm_year + 1900;
-    time.month = ptm->tm_mon + 1;
-    time.day = ptm->tm_mday;
+  memset(&time, 0, sizeof(time));
+  if (WiFi.status() != WL_CONNECTED && rtcValid) {
+    return getTimeRtc();
+  } else if (WiFi.status() == WL_CONNECTED) {
+    return getTimeNtp();
   }
+  time.valid = false;
   return time;
 }
 
@@ -144,7 +163,39 @@ boolean summertime_EU(TIME time, s8_t tzHours) {
               (1 + tzHours + 24 * (31 - (5 * year / 4 + 1) % 7)));
 }
 
+void initWebFunctions() {
+  server.begin();
+  Serial.println("HTTP server started");
+
+  timeClient.begin();
+  Serial.println("NTP client started");
+  timeClient.update();
+}
+
+void stopWebFunctions() {
+  server.stop();
+  Serial.println("HTTP server stopped");
+
+  timeClient.end();
+  Serial.println("NTP client stopped");
+}
+
+bool updateRtcTime() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Missing wifi connection, cannot adjust NTP time");
+    return false;
+  }
+
+  TIME time = getTimeNtp();
+  Serial.println("Adjust RTC time from NTP time");
+  rtc.adjust(DateTime(time.year, time.month, time.day, time.hour, time.minute,
+                      time.seconds));
+  return true;
+}
+
 void setup() {
+  TIME time;
+
   Serial.begin(9600);
   delay(1000);
 
@@ -155,19 +206,23 @@ void setup() {
   matrix.setTextColor(matrix.Color(255, 0, 0));
 
   WiFi.mode(WIFI_STA);
-  wifiManager.setConfigPortalTimeout(60);
   wifiManager.setConfigPortalBlocking(false);
+
   if (wifiManager.autoConnect("Wordclock")) {
     Serial.println("Connected to wifi :)");
+    wifiConnected = true;
   } else {
     Serial.println("Configportal at 192.168.4.1 running");
   }
 
   if (!rtc.begin()) {
     Serial.println("Couldn't find RTC");
-    Serial.flush();
-    while (1)
-      delay(10);
+    rtcFound = false;
+    rtcValid = false;
+  }
+
+  if (rtcFound && rtc.lostPower()) {
+    rtcValid = false;
   }
 
   server.on("/", handleOnConnect);
@@ -180,26 +235,21 @@ void setup() {
   server.on("/readDialect", handleGetDialect);
   server.onNotFound(handleNotFound);
 
-  server.begin();
-  Serial.println("HTTP server started");
-
-  timeClient.begin();
-  Serial.println("NTP client started");
-
-  timeClient.update();
-
-  TIME time = getTime();
-  if (summertime_EU(time, hourOffsetFromUTC)) {
-    timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
-  } else {
-    timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
+  if (WiFi.status() == WL_CONNECTED) {
+    initWebFunctions();
+    time = getTime();
+    Serial.println("Set summertime offset");
+    if (summertime_EU(time, hourOffsetFromUTC)) {
+      timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
+    } else {
+      timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
+    }
+    timeClient.update();
   }
-  timeClient.update();
 
-  if (rtc.lostPower() && WiFi.status() == WL_CONNECTED) {
+  if (rtcFound && rtc.lostPower()) {
     Serial.println("RTC lost power");
-    rtc.adjust(DateTime(time.year, time.month, time.day, time.hour, time.minute,
-                        time.seconds));
+    rtcValid = updateRtcTime();
   }
 }
 
@@ -212,31 +262,34 @@ u_int32_t syncRtc = 24 * 3600;
 
 void loop() {
   u_int16_t color;
-
-  TIME time = getTime();
-  DateTime now = rtc.now();
+  error = false;
 
   wifiManager.process();
-  timeClient.update();
-  server.handleClient();
+  if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
+    initWebFunctions();
+  }
+  if (wifiConnected && WiFi.status() != WL_CONNECTED) {
+    stopWebFunctions();
+  }
+  wifiConnected = WiFi.status() == WL_CONNECTED;
 
-  color = matrix.Color(0, 255, 0);
-  error = WiFi.status() != WL_CONNECTED;
-  if (error) {
-    color = matrix.Color(255, 0, 0);
+  TIME time = getTime();
+  if (!time.valid) {
+    error = true;
   }
 
-  matrix.fillScreen(0);
-  matrix.fillCircle(7, 2, 2, color);
-  matrix.show();
+  if (WiFi.status() == WL_CONNECTED) {
+    server.handleClient();
+  }
 
-  if (!timeProcessor->update(time.hour, time.minute, time.seconds)) {
+  if (time.valid &&
+      !timeProcessor->update(time.hour, time.minute, time.seconds)) {
     Serial.println("Error occured");
     error = true;
-    return;
   }
 
-  if (millis() - lastDaylightCheck > checkDaylightTime) {
+  if (WiFi.status() == WL_CONNECTED &&
+      millis() - lastDaylightCheck > checkDaylightTime) {
     if (summertime_EU(time, hourOffsetFromUTC)) {
       timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
     } else {
@@ -249,19 +302,33 @@ void loop() {
   if (millis() - lastRun > evalTimeEvery) {
     lastRun = millis();
     Serial.println("===========");
-    Serial.println(timeClient.getFormattedTime());
-    Serial.print(now.hour());
+    TIME ntpTime = getTimeNtp();
+    Serial.print(ntpTime.hour);
     Serial.print(":");
-    Serial.print(now.minute());
+    Serial.print(ntpTime.minute);
     Serial.print(":");
-    Serial.println(now.second());
+    Serial.println(ntpTime.seconds);
+    TIME rtcTime = getTimeRtc();
+    Serial.print(rtcTime.hour);
+    Serial.print(":");
+    Serial.print(rtcTime.minute);
+    Serial.print(":");
+    Serial.println(rtcTime.seconds);
   }
 
-  if (WiFi.status() == WL_CONNECTED && millis() - lastRtcSync > syncRtc) {
-    rtc.adjust(DateTime(time.year, time.month, time.day, time.hour, time.minute,
-                        time.seconds));
+  if (millis() - lastRtcSync > syncRtc && rtcFound) {
+    rtcValid = updateRtcTime();
     lastRtcSync = millis();
   }
+
+  color = matrix.Color(0, 255, 0);
+  if (error) {
+    color = matrix.Color(255, 0, 0);
+  }
+
+  matrix.fillScreen(0);
+  matrix.fillCircle(7, 2, 2, color);
+  matrix.show();
 
   delay(10);
 }

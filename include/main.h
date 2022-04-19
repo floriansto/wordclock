@@ -5,4 +5,5 @@ typedef struct _time {
   u_int16_t year;
   u_int8_t month;
   u_int8_t day;
+  bool valid;
 } TIME;
