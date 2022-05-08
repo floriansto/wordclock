@@ -259,6 +259,8 @@ unsigned long lastDaylightCheck = 0;
 u_int32_t checkDaylightTime = 1000;
 unsigned long lastRtcSync = 0;
 u_int32_t syncRtc = 24 * 3600;
+unsigned long lastTimeUpdate = 0;
+u_int32_t updateTime = 1 * 1000;
 
 void loop() {
   u_int16_t color;
@@ -326,8 +328,23 @@ void loop() {
     color = matrix.Color(255, 0, 0);
   }
 
-  matrix.fillScreen(0);
-  matrix.fillCircle(7, 2, 2, color);
+  if (millis() - lastTimeUpdate > updateTime && !error) {
+    Timestack *stack = timeProcessor->getStack();
+    TIMESTACK elem;
+    int buffer[4];
+
+    matrix.fillScreen(0);
+    for (int i = 0; i < stack->getSize(); ++i) {
+      if (!stack->get(&elem, i)) {
+        error = true;
+        return;
+      }
+      get_led_rectangle(elem.state, elem.useDialect, buffer);
+      matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3], color);
+    }
+    lastTimeUpdate = millis();
+  }
+
   matrix.show();
 
   delay(10);

@@ -4,10 +4,10 @@
 //#include <Arduino.h>
 
 #define PIN D6
-#define COL_PIXELS 5
+#define COL_PIXELS 14
 #define ROW_PIXELS 14
 #define NUMPIXELS (COL_PIXELS * ROW_PIXELS)
-#define INITIAL_BRIGHTNESS 10
+#define INITIAL_BRIGHTNESS 100
 
 const double max_current_ma = 400.0;
 const double allowed_current_per_color_ma =
