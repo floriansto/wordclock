@@ -208,8 +208,8 @@ bool TimeProcessor::getTimeStack(Timestack *stack) {
 
   ret &= stack->push(TIMESTACK{getStateFromNum(hour), getDialect()});
   if (checkInterval(seconds, 0)) {
-    ret &= stack->get(&elem, stack->getSize() - 1);
-    if (!ret && elem.state == ClockStr::One) {
+    ret &= stack->pop(&elem);
+    if (hour == 1) {
       ret &= stack->push(TIMESTACK{ClockStr::OneEven, getDialect()});
     }
     if (!getDialect()) {
