@@ -127,7 +127,7 @@
 
     setInterval(function () {
       getDataLong();
-    }, 10000);
+    }, 1000);
 
     function getDataLong() {
       var xhttp = new XMLHttpRequest();
@@ -139,6 +139,15 @@
       xhttp.open("GET", "readDialect", true);
       xhttp.send();
 
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("brightnessDisplay").innerHTML = parseInt(this.responseText);
+          document.getElementById("brightnessSlider").value = parseInt(this.responseText);
+        }
+      };
+      xhttp.open("GET", "readBrightness", true);
+      xhttp.send();
 
     }
 
