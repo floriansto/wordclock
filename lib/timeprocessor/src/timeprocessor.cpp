@@ -211,6 +211,8 @@ bool TimeProcessor::getTimeStack(Timestack *stack) {
     ret &= stack->pop(&elem);
     if (hour == 1) {
       ret &= stack->push(TIMESTACK{ClockStr::OneEven, getDialect()});
+    } else {
+      ret &= stack->push(elem);
     }
     if (!getDialect()) {
       ret &= stack->push(TIMESTACK{ClockStr::Clock, getDialect()});
