@@ -2,129 +2,168 @@
 <html>
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Wordclock</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        html {
-            font-family: Helvetica;
-            display: inline-block;
-            margin: 0px auto;
-            text-align: center;
-        }
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Wordclock</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html {
+      font-family: Helvetica;
+      display: inline-block;
+      margin: 0px auto;
+      text-align: center;
+    }
 
-        body {
-            margin-top: 50px;
-        }
+    body {
+      margin-top: 50px;
+    }
 
-        h1 {
-            color: #444444;
-            margin: 50px auto 30px;
-        }
+    h1 {
+      color: #444444;
+      margin: 50px auto 30px;
+    }
 
-        h3 {
-            color: #444444;
-            margin-bottom: 50px;
-        }
-    </style>
+    h3 {
+      color: #444444;
+      margin-bottom: 50px;
+    }
+  </style>
 </head>
 
 <body>
-    <h1>Wordclock Web Server</h1>
+  <h1>Wordclock</h1>
+  <h2>for Bine & Tobi to their wedding</h2>
 
-    <p>LED Brightness Up</p><a class="button button-on" onclick="sendData('up')">BRIGHTER</a>
-    <p>LED Brightness Down</p><a class="button button-off" onclick="sendData('down')">DARKER</a>
-    <p>Current Brightness<br><span id="LEDBrightness">0</span> %</p>
-    <p>Current Time<br><span id="CurrentTime">0</span></p>
+  <hr>
+  <p><span id="CurrentTime">00:00:00</span></p>
+  <p><span id="WordTime">Es ist zwölf Uhr</span></p>
 
-    <h1>Time in words</h1>
-    <h2><span id="WordTime">None</span></h2>
+  <hr>
 
-    <h1>Settings</h1>
-    Use dialect
-    <label class="switch">
+  <h2>Settings</h2>
+
+  <div class="settingsDiv">
+    <p>Use dialect
       <input id="switchDialect" type="checkbox" value="switchDialect" onclick="toggleDialect()">
-    </label>
-    <div>
+    </p>
 
-    <script>
-        function sendData(brightness) {
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("LEDBrightness").innerHTML =
-                        this.responseText;
-                }
-            };
-            xhttp.open("GET", "setBrightness?LEDBrightness=" + brightness, true);
-            xhttp.send();
+    <p>Brightness: <span id="brightnessDisplay"></span>%</p>
+    <input type="range" min="0" max="100" value="50" class="slider" id="brightnessSlider" onchange="updateSlider(this)">
+
+    <h4>Color Settings</h4>
+    <p>
+      Consistent color
+      <input id="switchConsColor" type="checkbox" value="switchConsColor">
+    </p>
+    <p>
+      Enable background color
+      <input id="switchConsColor" type="checkbox" value="switchConsColor">
+    </p>
+    <p>
+      Main color
+      <input id="mainColor" type="color">
+    </p>
+    <p>
+      Background color
+      <input id="backgroundColor" type="color">
+    </p>
+    <p>
+      "Es ist" color
+      <input id="itIsColor" type="color">
+    </p>
+    <p>
+      Before/After color
+      <input id="beforeAfterColor" type="color">
+    </p>
+    <p>
+      "Uhr" color
+      <input id="clockColor" type="color">
+    </p>
+  </div>
+
+  <script>
+
+    //var slider = document.getElementById("brightnessSlider");
+    //var output = document.getElementById("brightnessDisplay");
+
+    //slider.oninput = function () {
+      //output.innerHTML = this.value;
+      //var xhttp = new XMLHttpRequest();
+      //xhttp.onreadystatechange = function () {
+        //if (this.readyState == 4 && this.status == 200) {
+          //slider.innerHTML = parseInt(this.responseText);
+          // slider.value = parseInt(this.responseText);
+        //}
+      //};
+      //xhttp.open("GET", "setBrightness?LEDBrightness=" + this.value, true);
+      //xhttp.send();
+    //}
+
+    function updateSlider(element) {
+      var slider = document.getElementById("brightnessSlider");
+      var output = document.getElementById("brightnessDisplay");
+      var value = slider.value;
+      output.innerHTML = value;
+      var xhttp = new XMLHttpRequest();
+      xhttp.open("GET", "setBrightness?LEDBrightness=" + value, true);
+      xhttp.send();
+    }
+
+    function toggleDialect() {
+      var checkBox = document.getElementById("switchDialect")
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("switchDialect").innerHTML =
+            this.responseText;
         }
+      };
+      xhttp.open("GET", "setDialect?switchDialect=" + checkBox.checked, true);
+      xhttp.send();
+    }
 
-        function toggleDialect() {
-            var checkBox = document.getElementById("switchDialect")
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("switchDialect").innerHTML =
-                        this.responseText;
-                }
-            };
-            xhttp.open("GET", "setDialect?switchDialect=" + checkBox.checked, true);
-            xhttp.send();
+    setInterval(function () {
+      getData();
+    }, 500);
+
+    setInterval(function () {
+      getDataLong();
+    }, 10000);
+
+    function getDataLong() {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("switchDialect").checked = parseInt(this.responseText);
         }
-
-        setInterval(function () {
-            getData();
-        }, 500);
-
-        setInterval(function () {
-            getDataLong();
-        }, 10000);
-
-        function getDataLong() {
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("switchDialect").checked = parseInt(this.responseText);
-                }
-            };
-            xhttp.open("GET", "readDialect", true);
-            xhttp.send();
+      };
+      xhttp.open("GET", "readDialect", true);
+      xhttp.send();
 
 
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("LEDBrightness").innerHTML =
-                        this.responseText;
-                }
-            };
-            xhttp.open("GET", "readBrightness", true);
-            xhttp.send();
+    }
+
+    function getData() {
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("CurrentTime").innerHTML =
+            this.responseText;
         }
+      };
+      xhttp.open("GET", "readTime", true);
+      xhttp.send();
 
-        function getData() {
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("CurrentTime").innerHTML =
-                        this.responseText;
-                }
-            };
-            xhttp.open("GET", "readTime", true);
-            xhttp.send();
-
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    document.getElementById("WordTime").innerHTML =
-                        this.responseText;
-                }
-            };
-            xhttp.open("GET", "readWordTime", true);
-            xhttp.send();
+      var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("WordTime").innerHTML =
+            this.responseText;
         }
-    </script>
+      };
+      xhttp.open("GET", "readWordTime", true);
+      xhttp.send();
+    }
+  </script>
 
 </body>
 

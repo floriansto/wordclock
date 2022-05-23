@@ -83,7 +83,6 @@ double calc_scale(u_int16_t active_leds) {
 }
 
 void handleOnConnect() {
-  brightness = INITIAL_BRIGHTNESS;
   server.send(200, "text/html", index_html);
 }
 
@@ -91,13 +90,10 @@ void handleCss() { server.send(200, "text/css", style_css); }
 
 void handleBrightness() {
   String state = server.arg("LEDBrightness");
-  Serial.println(state);
-  if (state == "up")
-    brightness = brightness > 95 ? 100 : brightness + 5;
-  else
-    brightness = brightness < 5 ? 0 : brightness - 5;
-  server.send(200, "text/plain", String(brightness));
-  matrix.setBrightness(brightness * scale);
+  //Serial.println(state);
+  brightness = state.toInt();
+  server.send(200, "text/plain", state);
+  //matrix.setBrightness(brightness * calc_scale(active_leds_loop));
 }
 
 void handleDialect() {
