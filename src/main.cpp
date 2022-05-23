@@ -31,7 +31,7 @@ bool rtcFound = true;
 bool rtcValid = true;
 bool error = false;
 bool wifiConnected = false;
-
+u_int16_t active_leds_loop = 0;
 u_int8_t brightness = INITIAL_BRIGHTNESS;
 
 TIME getTimeRtc() {
@@ -72,6 +72,14 @@ TIME getTime() {
   }
   time.valid = false;
   return time;
+}
+
+double calc_scale(u_int16_t active_leds) {
+  if (active_leds == 0) {
+    active_leds = NUMPIXELS;
+  }
+  double current_per_color = max_current_ma / (double) active_leds / 3.0;
+  return current_per_color / max_current_per_color_ma;
 }
 
 void handleOnConnect() {
@@ -201,8 +209,7 @@ void setup() {
 
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(brightness * scale);
-  Serial.println(scale);
+  matrix.setBrightness(brightness * calc_scale(NUMPIXELS));
   matrix.setTextColor(matrix.Color(255, 0, 0));
 
   WiFi.mode(WIFI_STA);
@@ -251,6 +258,11 @@ void setup() {
     Serial.println("RTC lost power");
     rtcValid = updateRtcTime();
   }
+
+  matrix.setBrightness(100 * calc_scale(NUMPIXELS));
+  matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS, matrix.Color(255, 0, 0));
+  matrix.show();
+  delay(3000);
 }
 
 unsigned long lastRun = 0;
@@ -334,6 +346,7 @@ void loop() {
     int buffer[4];
 
     matrix.fillScreen(0);
+    active_leds_loop = 0;
     for (int i = 0; i < stack->getSize(); ++i) {
       if (!stack->get(&elem, i)) {
         error = true;
@@ -341,10 +354,12 @@ void loop() {
       }
       get_led_rectangle(elem.state, elem.useDialect, buffer);
       matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3], color);
+      active_leds_loop += (buffer[2] * buffer[3]);
     }
     lastTimeUpdate = millis();
   }
 
+  matrix.setBrightness(brightness * calc_scale(active_leds_loop));
   matrix.show();
 
   delay(10);
