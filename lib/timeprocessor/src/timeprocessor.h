@@ -55,7 +55,7 @@ enum class Times {
   F(ClockStr::FiveHour, 5, "FÜNF", 5, 1, 8, 4, 1)                              \
   F(ClockStr::Six, 6, "SECHS", 5, 8, 7, 5, 1)                                  \
   F(ClockStr::Seven, 7, "SIEBEN", 6, 7, 5, 6, 1)                               \
-  F(ClockStr::Eight, 8, "ACHT", 4, 1, 9, 4, 1)                                 \
+  F(ClockStr::Eight, 8, "ACHT", 4, 9, 1, 4, 1)                                 \
   F(ClockStr::Nine, 9, "NEUN", 4, 0, 1, 4, 1)                                  \
   F(ClockStr::TenHour, 10, "ZEHN", 4, 8, 8, 4, 1)                              \
   F(ClockStr::Eleven, 11, "ELF", 3, 0, 7, 3, 1)                                \
