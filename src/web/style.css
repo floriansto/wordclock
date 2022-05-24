@@ -45,7 +45,7 @@ p {
 .slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 5px;
+  height: 21px;
   border-radius: 5px;
   background: #d3d3d3;
   outline: none;
