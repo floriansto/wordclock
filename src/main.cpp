@@ -10,6 +10,7 @@
 
 #include "../include/main.h"
 #include "../include/settings.h"
+#include "../include/hw_settings.h"
 #include "../includes_gen/css.h"
 #include "../includes_gen/index.h"
 
@@ -23,8 +24,10 @@ WiFiUDP ntpUDP;
 RTC_DS3231 rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 ESP8266WebServer server(80);
+
+Settings *settings = new Settings();
 TimeProcessor *timeProcessor =
-    new TimeProcessor(useDialect, useQuaterPast, useThreeQuater, offsetLowSecs,
+    new TimeProcessor(settings->getUseDialect(), settings->getUseQuaterPast(), settings->getUseThreeQuater(), offsetLowSecs,
                       offsetHighSecs, NUMPIXELS);
 
 bool rtcFound = true;
@@ -100,11 +103,11 @@ void handleDialect() {
   String state = server.arg("switchDialect");
   Serial.println(state);
   if (state == "true") {
-    useDialect = true;
+    settings->setUseDialect(true);
   } else {
-    useDialect = false;
+    settings->setUseDialect(false);
   }
-  timeProcessor->setDialect(useDialect);
+  timeProcessor->setDialect(settings->getUseDialect());
   server.send(200, "text/plain", state);
 }
 
@@ -132,7 +135,7 @@ void handleGetWordTime() {
 }
 
 void handleGetDialect() {
-  server.send(200, "text/plain", String((int)useDialect));
+  server.send(200, "text/plain", String((int)settings->getUseDialect()));
 }
 
 /**
