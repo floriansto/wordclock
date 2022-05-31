@@ -1,41 +1,66 @@
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
-#include <ESP8266WebServer.h>
+
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#else
+#include <WiFi.h>
+#endif
+
+#include <ESPAsyncTCP.h>
 #include <NTPClient.h>
 #include <RTClib.h>
-#include <WiFiManager.h>
+
+#include <Arduino_JSON.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 #include <math.h>
 #include <timeprocessor.h>
 
+#include "../include/hw_settings.h"
 #include "../include/main.h"
 #include "../include/settings.h"
-#include "../include/hw_settings.h"
-#include "../includes_gen/css.h"
-#include "../includes_gen/index.h"
+#include "LittleFS.h"
 
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
     ROW_PIXELS, COL_PIXELS, PIN,
     NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
     NEO_GRB + NEO_KHZ800);
 
-WiFiManager wifiManager;
+AsyncWebServer server(80);
+DNSServer dns;
+AsyncWiFiManager wifiManager(&server, &dns);
+AsyncWebSocket ws("/ws");
+
 WiFiUDP ntpUDP;
 RTC_DS3231 rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-ESP8266WebServer server(80);
 
 Settings *settings = new Settings();
-TimeProcessor *timeProcessor =
-    new TimeProcessor(settings->getUseDialect(), settings->getUseQuaterPast(), settings->getUseThreeQuater(), offsetLowSecs,
-                      offsetHighSecs, NUMPIXELS);
+TimeProcessor *timeProcessor = new TimeProcessor(
+    settings->getUseDialect(), settings->getUseQuaterPast(),
+    settings->getUseThreeQuater(), offsetLowSecs, offsetHighSecs, NUMPIXELS);
 
 bool rtcFound = true;
 bool rtcValid = true;
 bool error = false;
 bool wifiConnected = false;
 u_int16_t active_leds_loop = 0;
-u_int8_t brightness = INITIAL_BRIGHTNESS;
+
+// Get settings values
+String getSettingsValues() {
+  JSONVar settingsValues;
+
+  settingsValues["brightnessSlider"] = String(settings->getBrightness());
+  settingsValues["switchDialect"] = "false";
+  if (settings->getUseDialect() == true) {
+    settingsValues["switchDialect"] = "true";
+  }
+
+  String jsonString = JSON.stringify(settingsValues);
+  return jsonString;
+}
 
 TIME getTimeRtc() {
   TIME time;
@@ -81,61 +106,8 @@ double calc_scale(u_int16_t active_leds) {
   if (active_leds == 0) {
     active_leds = NUMPIXELS;
   }
-  double current_per_color = max_current_ma / (double) active_leds / 3.0;
+  double current_per_color = max_current_ma / (double)active_leds / 3.0;
   return current_per_color / max_current_per_color_ma;
-}
-
-void handleOnConnect() {
-  server.send(200, "text/html", index_html);
-}
-
-void handleCss() { server.send(200, "text/css", style_css); }
-
-void handleBrightness() {
-  String state = server.arg("LEDBrightness");
-  //Serial.println(state);
-  brightness = state.toInt();
-  server.send(200, "text/plain", state);
-  //matrix.setBrightness(brightness * calc_scale(active_leds_loop));
-}
-
-void handleDialect() {
-  String state = server.arg("switchDialect");
-  Serial.println(state);
-  if (state == "true") {
-    settings->setUseDialect(true);
-  } else {
-    settings->setUseDialect(false);
-  }
-  timeProcessor->setDialect(settings->getUseDialect());
-  server.send(200, "text/plain", state);
-}
-
-void handleNotFound() { server.send(404, "text/plain", "Not found"); }
-
-void handleGetBrightness() {
-  server.send(200, "text/plain", String(brightness));
-}
-
-void handleGetTime() {
-  TIME time = getTime();
-  char timeStr[12];
-  sprintf(timeStr, "%02d:%02d:%02d", time.hour, time.minute, time.seconds);
-  server.send(200, "text/plain", timeStr);
-}
-
-void handleGetWordTime() {
-  char wordTime[NUMPIXELS];
-  char error[] = "Error getting the time";
-  if (timeProcessor->getWordTime(wordTime)) {
-    server.send(200, "text/plain", wordTime);
-  } else {
-    server.send(200, "text/plain", error);
-  }
-}
-
-void handleGetDialect() {
-  server.send(200, "text/plain", String((int)settings->getUseDialect()));
 }
 
 /**
@@ -180,7 +152,7 @@ void initWebFunctions() {
 }
 
 void stopWebFunctions() {
-  server.stop();
+  server.end();
   Serial.println("HTTP server stopped");
 
   timeClient.end();
@@ -200,6 +172,69 @@ bool updateRtcTime() {
   return true;
 }
 
+// Initialize LittleFS
+void initFS() {
+  if (!LittleFS.begin()) {
+    Serial.println("An error has occurred while mounting LittleFS");
+  } else {
+    Serial.println("LittleFS mounted successfully");
+  }
+}
+
+void notifyClients(String settingsValues) { ws.textAll(settingsValues); }
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len &&
+      info->opcode == WS_TEXT) {
+    data[len] = 0;
+    String message = (char *)data;
+    if (message.indexOf("Brightness") == 0) {
+      int brightness = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setBrightness(brightness);
+      Serial.println(brightness);
+      Serial.print(getSettingsValues());
+      notifyClients(getSettingsValues());
+    }
+    if (message.indexOf("Dialect") == 0) {
+      String strDialect = message.substring(message.indexOf("=") + 1);
+      settings->setUseDialect(strDialect == "true");
+      timeProcessor->setDialect(settings->getUseDialect());
+      Serial.println(strDialect);
+      Serial.print(getSettingsValues());
+      notifyClients(getSettingsValues());
+    }
+
+    if (strcmp((char *)data, "getValues") == 0) {
+      notifyClients(getSettingsValues());
+    }
+  }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
+             AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  switch (type) {
+  case WS_EVT_CONNECT:
+    Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
+                  client->remoteIP().toString().c_str());
+    break;
+  case WS_EVT_DISCONNECT:
+    Serial.printf("WebSocket client #%u disconnected\n", client->id());
+    break;
+  case WS_EVT_DATA:
+    handleWebSocketMessage(arg, data, len);
+    break;
+  case WS_EVT_PONG:
+  case WS_EVT_ERROR:
+    break;
+  }
+}
+
+void initWebSocket() {
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
+}
+
 void setup() {
   TIME time;
 
@@ -208,11 +243,11 @@ void setup() {
 
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(brightness * calc_scale(NUMPIXELS));
+  matrix.setBrightness(settings->getBrightness() * calc_scale(NUMPIXELS));
   matrix.setTextColor(matrix.Color(255, 0, 0));
 
   WiFi.mode(WIFI_STA);
-  wifiManager.setConfigPortalBlocking(false);
+  // wifiManager.setConfigPortalBlocking(false);
 
   if (wifiManager.autoConnect("Wordclock")) {
     Serial.println("Connected to wifi :)");
@@ -231,15 +266,15 @@ void setup() {
     rtcValid = false;
   }
 
-  server.on("/", handleOnConnect);
-  server.on("/style.css", handleCss);
-  server.on("/setBrightness", handleBrightness);
-  server.on("/setDialect", handleDialect);
-  server.on("/readBrightness", handleGetBrightness);
-  server.on("/readTime", handleGetTime);
-  server.on("/readWordTime", handleGetWordTime);
-  server.on("/readDialect", handleGetDialect);
-  server.onNotFound(handleNotFound);
+  initFS();
+  initWebSocket();
+
+  // Web Server Root URL
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/index.html", "text/html");
+  });
+
+  server.serveStatic("/", LittleFS, "/");
 
   if (WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
@@ -277,7 +312,7 @@ void loop() {
   u_int16_t color;
   error = false;
 
-  wifiManager.process();
+  // wifiManager.process();
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
   }
@@ -289,10 +324,6 @@ void loop() {
   TIME time = getTime();
   if (!time.valid) {
     error = true;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    server.handleClient();
   }
 
   if (time.valid &&
@@ -358,7 +389,8 @@ void loop() {
     lastTimeUpdate = millis();
   }
 
-  matrix.setBrightness(brightness * calc_scale(active_leds_loop));
+  matrix.setBrightness(settings->getBrightness() *
+                       calc_scale(active_leds_loop));
   matrix.show();
 
   delay(10);
