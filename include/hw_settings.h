@@ -13,6 +13,5 @@ const double allowed_current_per_color_ma =
 const double max_current_per_color_ma = 11.0;
 const u_int16_t offsetLowSecs = 150;
 const u_int16_t offsetHighSecs = 300 - offsetLowSecs;
-const s8_t hourOffsetFromUTC = 1;
 
 #endif

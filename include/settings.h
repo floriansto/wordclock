@@ -10,12 +10,16 @@ public:
   int getBrightness();
   void setBrightness(int brightness);
   void setUseDialect(bool useDialect);
+  String getJsonString();
+  sint8_t getUtcHourOffset();
+  void setUtcHourOffset(sint8_t offset);
 
 private:
   bool m_useQuaterPast;
   bool m_useThreeQuater;
   bool m_useDialect;
   int m_brightness;
+  sint8_t m_utcHourOffset;
 };
 
 #endif
