@@ -47,12 +47,12 @@ Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
 
-double calcBrightnessScale(u_int16_t active_leds) {
-  if (active_leds == 0) {
-    active_leds = NUMPIXELS;
+double calcBrightnessScale(u_int16_t activeLeds) {
+  double maxCurrent = maxCurrentPerLed * (double) activeLeds;
+  if (maxCurrent < maxCurrentAll) {
+    return 255.0;
   }
-  double current_per_color = max_current_ma / (double)active_leds / 3.0;
-  return current_per_color / max_current_per_color_ma;
+  return 255.0 * maxCurrentAll / maxCurrent;
 }
 
 void showTime(COLOR color) {
@@ -73,7 +73,7 @@ void showTime(COLOR color) {
     numActiveLeds += (buffer[2] * buffer[3]);
   }
 
-  matrix.setBrightness(settings->getBrightness() *
+  matrix.setBrightness(settings->getBrightness() / 100.0 *
                        calcBrightnessScale(numActiveLeds));
   matrix.show();
 }
@@ -103,7 +103,7 @@ void updateSettings() {
   timeProcessor->setDialect(settings->getUseDialect());
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
-  matrix.setBrightness(settings->getBrightness() *
+  matrix.setBrightness(settings->getBrightness() / 100.0 *
                        calcBrightnessScale(numActiveLeds));
 }
 
