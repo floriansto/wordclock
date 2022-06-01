@@ -117,6 +117,7 @@ bool adjustSummertime(RTC *rtc, NTPClient *timeClient, s8_t utcHourOffsets,
     timeClient->setTimeOffset(utcHourOffsets * 3600);
   }
   timeClient->update();
+  time = getTime(rtc, timeClient, wifiConnected);
 
   if (updateRtcTime(rtc, &time, wifiConnected) == false) {
     return false;
