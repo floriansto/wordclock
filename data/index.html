@@ -42,12 +42,25 @@
   <h2>Settings</h2>
 
   <div class="settingsDiv">
-    <p>Use dialect
-      <input id="switchDialect" type="checkbox" onclick="toggleDialect(this)">
-    </p>
 
     <p>Brightness: <span id="brightnessSliderDisplay"></span>%</p>
     <input type="range" min="0" max="100" value="50" class="slider" id="brightnessSlider" onchange="updateSliderBrightness(this)">
+
+    <h4>Clock Settings</h4>
+    <table>
+      <tr>
+        <td>Use dialect</td>
+        <td><input id="switchDialect" type="checkbox" onclick="toggleDialect(this)"></td>
+      </tr>
+      <tr>
+        <td>Use "dreiviertel"</td>
+        <td><input id="switchThreeQuater" type="checkbox" onclick="toggleThreeQuater(this)"></td>
+      </tr>
+      <tr>
+        <td>Use "viertel nach"</td>
+        <td><input id="switchQuaterPast" type="checkbox" onclick="toggleQuaterPast(this)"></td>
+      </tr>
+    </table>
 
     <h4>Color Settings</h4>
     <table>
@@ -61,7 +74,7 @@
       </tr>
       <tr>
         <td>Main color</td>
-        <td><input id="mainColor" type="color"></td>
+        <td><input id="mainColor" type="color" onchange="updateMainColor(this)"></td>
       </tr>
       <tr>
         <td>Background color</td>

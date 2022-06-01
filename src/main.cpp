@@ -45,7 +45,7 @@ TimeProcessor *timeProcessor = new TimeProcessor(
 
 Error error = Error::OK;
 bool wifiConnected = false;
-u_int16_t active_leds_loop = 0;
+u_int16_t numActiveLeds = NUMPIXELS;
 
 double calcBrightnessScale(u_int16_t active_leds) {
   if (active_leds == 0) {
@@ -55,25 +55,26 @@ double calcBrightnessScale(u_int16_t active_leds) {
   return current_per_color / max_current_per_color_ma;
 }
 
-void showTime(u_int16_t color) {
+void showTime(COLOR color) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   int buffer[4];
 
   matrix.fillScreen(0);
-  active_leds_loop = 0;
+  numActiveLeds = 0;
   for (int i = 0; i < stack->getSize(); ++i) {
     if (!stack->get(&elem, i)) {
       error = Error::TIMESTACK_GET_ELEM_FAILED;
       return;
     }
     get_led_rectangle(elem.state, elem.useDialect, buffer);
-    matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3], color);
-    active_leds_loop += (buffer[2] * buffer[3]);
+    matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3],
+                    matrix.Color(color.r, color.g, color.b));
+    numActiveLeds += (buffer[2] * buffer[3]);
   }
 
   matrix.setBrightness(settings->getBrightness() *
-                       calcBrightnessScale(active_leds_loop));
+                       calcBrightnessScale(numActiveLeds));
   matrix.show();
 }
 
@@ -98,6 +99,14 @@ String readSettings() {
 
 void notifyClients(String settingsValues) { ws.textAll(settingsValues); }
 
+void updateSettings() {
+  timeProcessor->setDialect(settings->getUseDialect());
+  timeProcessor->setThreeQuater(settings->getUseThreeQuater());
+  timeProcessor->setQuaterPast(settings->getUseQuaterPast());
+  matrix.setBrightness(settings->getBrightness() *
+                       calcBrightnessScale(numActiveLeds));
+}
+
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len &&
@@ -107,22 +116,40 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (message.indexOf("Brightness") == 0) {
       int brightness = message.substring(message.indexOf("=") + 1).toInt();
       settings->setBrightness(brightness);
-      Serial.println(brightness);
-      Serial.println(settings->getJsonString());
       notifyClients(settings->getJsonString());
     }
     if (message.indexOf("Dialect") == 0) {
       int dialect = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseDialect(dialect > 0);
-      timeProcessor->setDialect(settings->getUseDialect());
-      Serial.println(dialect);
-      Serial.println(settings->getJsonString());
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("ThreeQuater") == 0) {
+      int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseThreeQuater(threeQuater > 0);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("QuaterPast") == 0) {
+      int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseQuaterPast(quaterPast > 0);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("MainColor") == 0) {
+      String mainColorStr = message.substring(message.indexOf("=") + 1);
+      char colorChar[9];
+      mainColorStr.toCharArray(colorChar, 9);
+      int mainColor = strtol(colorChar, 0, 16);
+
+      uint8_t r = (mainColor & 0xFF0000) >> 16;
+      uint8_t g = (mainColor & 0x00FF00) >> 8;
+      uint8_t b = mainColor & 0x0000FF;
+      settings->setMainColor(COLOR{r, g, b});
       notifyClients(settings->getJsonString());
     }
 
     if (strcmp((char *)data, "getValues") == 0) {
       notifyClients(settings->getJsonString());
     }
+    updateSettings();
     writeSettings(settings->getJsonString());
   }
 }
@@ -194,11 +221,7 @@ void setup() {
   initFS();
 
   settings->fromJsonString(readSettings());
-  Serial.println(settings->getJsonString());
-
-  matrix.setBrightness(settings->getBrightness() *
-                       calcBrightnessScale(NUMPIXELS));
-  timeProcessor->setDialect(settings->getUseDialect());
+  updateSettings();
 
   rtc.found = true;
   rtc.valid = true;
@@ -302,9 +325,8 @@ void loop() {
     lastRtcSync = millis();
   }
 
-  settings->setMainColor(0, 255, 0);
   if (error != Error::OK) {
-    settings->setMainColor(255, 0, 0);
+    settings->setMainColor(COLOR{255, 0, 0});
   }
 
   if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
