@@ -39,11 +39,14 @@ String Settings::getJsonString() {
   JSONVar settingsValues;
 
   settingsValues["brightnessSlider"] = this->getBrightness();
-  settingsValues["switchDialect"] = "false";
-  if (this->getUseDialect() == true) {
-    settingsValues["switchDialect"] = "true";
-  }
+  settingsValues["switchDialect"] = (int)this->getUseDialect();
 
   String jsonString = JSON.stringify(settingsValues);
   return jsonString;
+}
+
+void Settings::fromJsonString(String settings) {
+  JSONVar json = JSON.parse(settings);
+  m_brightness = json["brightnessSlider"];
+  m_useDialect = ((int) json["switchDialect"]) > 0;
 }

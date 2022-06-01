@@ -77,6 +77,25 @@ void showTime(u_int16_t color) {
   matrix.show();
 }
 
+void writeSettings(String data) {
+  File file = LittleFS.open("/settings.json", "w");
+  file.print(data);
+  file.close();
+  Serial.println("Saved settings");
+  Serial.println(data);
+}
+
+String readSettings() {
+  File file = LittleFS.open("/settings.json", "r");
+  if (!file) {
+    Serial.println("settings.json not found!");
+    return "";
+  }
+  String content = file.readString();
+  Serial.println(content);
+  return content;
+}
+
 void notifyClients(String settingsValues) { ws.textAll(settingsValues); }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -89,21 +108,22 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       int brightness = message.substring(message.indexOf("=") + 1).toInt();
       settings->setBrightness(brightness);
       Serial.println(brightness);
-      Serial.print(settings->getJsonString());
+      Serial.println(settings->getJsonString());
       notifyClients(settings->getJsonString());
     }
     if (message.indexOf("Dialect") == 0) {
-      String strDialect = message.substring(message.indexOf("=") + 1);
-      settings->setUseDialect(strDialect == "true");
+      int dialect = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseDialect(dialect > 0);
       timeProcessor->setDialect(settings->getUseDialect());
-      Serial.println(strDialect);
-      Serial.print(settings->getJsonString());
+      Serial.println(dialect);
+      Serial.println(settings->getJsonString());
       notifyClients(settings->getJsonString());
     }
 
     if (strcmp((char *)data, "getValues") == 0) {
       notifyClients(settings->getJsonString());
     }
+    writeSettings(settings->getJsonString());
   }
 }
 
@@ -170,9 +190,15 @@ void setup() {
 
   matrix.begin();
   matrix.setTextWrap(false);
+
+  initFS();
+
+  settings->fromJsonString(readSettings());
+  Serial.println(settings->getJsonString());
+
   matrix.setBrightness(settings->getBrightness() *
                        calcBrightnessScale(NUMPIXELS));
-  settings->setMainColor(0, 255, 0);
+  timeProcessor->setDialect(settings->getUseDialect());
 
   rtc.found = true;
   rtc.valid = true;
@@ -190,8 +216,6 @@ void setup() {
       timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
     showTime(settings->getMainColor());
   }
-
-  initFS();
 
   WiFi.mode(WIFI_STA);
   wifiManager.setConfigPortalTimeout(120);

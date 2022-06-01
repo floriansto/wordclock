@@ -11,6 +11,7 @@ public:
   void setBrightness(int brightness);
   void setUseDialect(bool useDialect);
   String getJsonString();
+  void fromJsonString(String settings);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   u_int16_t getMainColor();

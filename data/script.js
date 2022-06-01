@@ -39,10 +39,11 @@ function updateSliderBrightness(element) {
 function toggleDialect(element) {
   var checkboxState = document.getElementById(element.id).checked;
   console.log(checkboxState);
-  var boolState = "false";
+  var boolState = 0;
   if (checkboxState === true) {
-    boolState = "true";
+    boolState = 1;
   }
+  console.log(boolState);
   websocket.send("Dialect=" + boolState);
 }
 
@@ -58,7 +59,7 @@ function onMessage(event) {
     }
     elem = document.getElementById(key);
     if (elem.getAttribute("type") === "checkbox") {
-      if (myObj[key] === "true") {
+      if (myObj[key] === 1) {
         elem.checked = true;
       } else {
         elem.checked = false;
