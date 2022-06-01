@@ -6,10 +6,15 @@
 #include "../include/timeUtils.h"
 
 bool updateRtcTime(RTC *rtc, TIME *time, bool wifiConnected) {
-  if (wifiConnected == true) {
+  if (wifiConnected == false && rtc->valid == false) {
     Serial.println("Missing wifi connection, cannot adjust NTP time");
     rtc->valid = false;
     return false;
+  }
+
+  if (wifiConnected == false && rtc->valid == true) {
+    Serial.println("Missing wifi connection, but rtc time seems to be valid");
+    return true;
   }
 
   if (rtc->found == false) {
@@ -61,6 +66,8 @@ TIME getTime(RTC *rtc, NTPClient *timeClient, bool wifiConnected) {
   } else if (wifiConnected == true) {
     return getTimeNtp(timeClient);
   }
+
+  Serial.println("Cannot get a valid time");
   time.valid = false;
   return time;
 }

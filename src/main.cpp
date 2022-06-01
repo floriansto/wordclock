@@ -55,6 +55,28 @@ double calcBrightnessScale(u_int16_t active_leds) {
   return current_per_color / max_current_per_color_ma;
 }
 
+void showTime(u_int16_t color) {
+  Timestack *stack = timeProcessor->getStack();
+  TIMESTACK elem;
+  int buffer[4];
+
+  matrix.fillScreen(0);
+  active_leds_loop = 0;
+  for (int i = 0; i < stack->getSize(); ++i) {
+    if (!stack->get(&elem, i)) {
+      error = Error::TIMESTACK_GET_ELEM_FAILED;
+      return;
+    }
+    get_led_rectangle(elem.state, elem.useDialect, buffer);
+    matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3], color);
+    active_leds_loop += (buffer[2] * buffer[3]);
+  }
+
+  matrix.setBrightness(settings->getBrightness() *
+                       calcBrightnessScale(active_leds_loop));
+  matrix.show();
+}
+
 void notifyClients(String settingsValues) { ws.textAll(settingsValues); }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -150,18 +172,10 @@ void setup() {
   matrix.setTextWrap(false);
   matrix.setBrightness(settings->getBrightness() *
                        calcBrightnessScale(NUMPIXELS));
-  matrix.setTextColor(matrix.Color(255, 0, 0));
+  settings->setMainColor(0, 255, 0);
 
-  WiFi.mode(WIFI_STA);
-  // wifiManager.setConfigPortalBlocking(false);
-
-  if (wifiManager.autoConnect("Wordclock")) {
-    Serial.println("Connected to wifi :)");
-    wifiConnected = true;
-  } else {
-    Serial.println("Configportal at 192.168.4.1 running");
-  }
-
+  rtc.found = true;
+  rtc.valid = true;
   if (!rtc.rtc.begin()) {
     Serial.println("Couldn't find RTC");
     rtc.found = false;
@@ -171,7 +185,22 @@ void setup() {
     rtc.valid = false;
   }
 
+  TIME time = getTime(&rtc, &timeClient, wifiConnected);
+  if (time.valid == true &&
+      timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
+    showTime(settings->getMainColor());
+  }
+
   initFS();
+
+  WiFi.mode(WIFI_STA);
+  wifiManager.setConfigPortalTimeout(120);
+  if (wifiManager.autoConnect("Wordclock")) {
+    Serial.println("Connected to wifi :)");
+    wifiConnected = true;
+  } else {
+    Serial.println("Configportal at 192.168.4.1 running");
+  }
 
   if (wifiConnected == true) {
     initWebFunctions();
@@ -185,14 +214,15 @@ void setup() {
 unsigned long lastRun = 0;
 u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
-u_int32_t checkDaylightTime = 1000;
+u_int32_t checkDaylightTime = 10000;
 unsigned long lastRtcSync = 0;
 u_int32_t syncRtc = 24 * 3600;
 unsigned long lastTimeUpdate = 0;
 u_int32_t updateTime = 1 * 1000;
 
+bool showCaptivePortal = true;
+
 void loop() {
-  u_int16_t color;
   error = Error::OK;
 
   // wifiManager.process();
@@ -248,33 +278,15 @@ void loop() {
     lastRtcSync = millis();
   }
 
-  color = matrix.Color(0, 255, 0);
+  settings->setMainColor(0, 255, 0);
   if (error != Error::OK) {
-    color = matrix.Color(255, 0, 0);
+    settings->setMainColor(255, 0, 0);
   }
 
-  if (millis() - lastTimeUpdate > updateTime && error == Error::OK) {
-    Timestack *stack = timeProcessor->getStack();
-    TIMESTACK elem;
-    int buffer[4];
-
-    matrix.fillScreen(0);
-    active_leds_loop = 0;
-    for (int i = 0; i < stack->getSize(); ++i) {
-      if (!stack->get(&elem, i)) {
-        error = Error::TIMESTACK_GET_ELEM_FAILED;
-        return;
-      }
-      get_led_rectangle(elem.state, elem.useDialect, buffer);
-      matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3], color);
-      active_leds_loop += (buffer[2] * buffer[3]);
-    }
+  if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
+    showTime(settings->getMainColor());
     lastTimeUpdate = millis();
   }
-
-  matrix.setBrightness(settings->getBrightness() *
-                       calcBrightnessScale(active_leds_loop));
-  matrix.show();
 
   delay(10);
 }
