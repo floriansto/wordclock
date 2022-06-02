@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" charset="utf-8">
+  <title>Wordclock</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html {
+      font-family: Helvetica;
+      display: inline-block;
+      margin: 0px auto;
+      text-align: center;
+    }
+
+    body {
+      margin-top: 50px;
+    }
+
+    h1 {
+      color: #444444;
+      margin: 50px auto 30px;
+    }
+
+    h3 {
+      color: #444444;
+      margin-bottom: 50px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Wordclock</h1>
+  <h2>for Bine & Tobi to their wedding</h2>
+
+  <hr>
+  <p><span id="CurrentTime">00:00:00</span></p>
+  <p><span id="WordTime">Es ist zwölf Uhr</span></p>
+
+  <hr>
+
+  <h2>Settings</h2>
+
+  <div class="settingsDiv">
+
+    <p>Brightness: <span id="brightnessSliderDisplay"></span>%</p>
+    <input type="range" min="0" max="100" value="50" class="slider" id="brightnessSlider" onchange="updateSliderBrightness(this)">
+
+    <h4>Clock Settings</h4>
+    <table>
+      <tr>
+        <td>Use dialect</td>
+        <td><input id="switchDialect" type="checkbox" onclick="toggleDialect(this)"></td>
+      </tr>
+      <tr>
+        <td>Use "dreiviertel"</td>
+        <td><input id="switchThreeQuater" type="checkbox" onclick="toggleThreeQuater(this)"></td>
+      </tr>
+      <tr>
+        <td>Use "viertel nach"</td>
+        <td><input id="switchQuaterPast" type="checkbox" onclick="toggleQuaterPast(this)"></td>
+      </tr>
+    </table>
+
+    <h4>Color Settings</h4>
+    <table>
+      <tr>
+        <td>Consistent color</td>
+        <td><input id="switchConsColor" type="checkbox" value="switchConsColor"></td>
+      </tr>
+      <tr>
+        <td>Enable background color</td>
+        <td><input id="switchBackgroundColor" type="checkbox" onclick="toggleBackgroundColor(this)"></td>
+      </tr>
+      <tr>
+        <td>Main color</td>
+        <td><input id="mainColor" type="color" onchange="updateMainColor(this)"></td>
+      </tr>
+      <tr>
+        <td>Background color</td>
+        <td><input id="backgroundColor" type="color" onchange="updateBackgroundColor(this)"></td>
+      </tr>
+      <tr>
+        <td>"Es ist" color</td>
+        <td><input id="itIsColor" type="color"></td>
+      </tr>
+      <tr>
+        <td>Before/After color</td>
+        <td><input id="beforeAfterColor" type="color"></td>
+      </tr>
+      <tr>
+        <td>"Uhr" color</td>
+        <td><input id="clockColor" type="color"></td>
+      </tr>
+    </table>
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>

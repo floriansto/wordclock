@@ -1,179 +1,220 @@
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
-#include <ESP8266WebServer.h>
+
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#else
+#include <WiFi.h>
+#endif
+
+#include <ESPAsyncTCP.h>
 #include <NTPClient.h>
 #include <RTClib.h>
-#include <WiFiManager.h>
+
+#include <Arduino_JSON.h>
+#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWiFiManager.h>
 #include <math.h>
 #include <timeprocessor.h>
 
+#include "../include/hw_settings.h"
 #include "../include/main.h"
 #include "../include/settings.h"
-#include "../includes_gen/css.h"
-#include "../includes_gen/index.h"
+#include "../include/timeUtils.h"
+#include "LittleFS.h"
 
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
     ROW_PIXELS, COL_PIXELS, PIN,
     NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
     NEO_GRB + NEO_KHZ800);
 
-WiFiManager wifiManager;
+AsyncWebServer server(80);
+DNSServer dns;
+AsyncWiFiManager wifiManager(&server, &dns);
+AsyncWebSocket ws("/ws");
+
 WiFiUDP ntpUDP;
-RTC_DS3231 rtc;
+RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-ESP8266WebServer server(80);
-TimeProcessor *timeProcessor =
-    new TimeProcessor(useDialect, useQuaterPast, useThreeQuater, offsetLowSecs,
-                      offsetHighSecs, NUMPIXELS);
 
-bool rtcFound = true;
-bool rtcValid = true;
-bool error = false;
+Settings *settings = new Settings();
+TimeProcessor *timeProcessor = new TimeProcessor(
+    settings->getUseDialect(), settings->getUseQuaterPast(),
+    settings->getUseThreeQuater(), offsetLowSecs, offsetHighSecs, NUMPIXELS);
+
+Error error = Error::OK;
 bool wifiConnected = false;
-u_int16_t active_leds_loop = 0;
-u_int8_t brightness = INITIAL_BRIGHTNESS;
+u_int16_t numActiveLeds = NUMPIXELS;
 
-TIME getTimeRtc() {
-  TIME time;
-  DateTime now{rtc.now()};
-  time.hour = now.hour();
-  time.minute = now.minute();
-  time.seconds = now.second();
-  time.year = now.year();
-  time.month = now.month();
-  time.day = now.day();
-  time.valid = true;
-  return time;
-}
-
-TIME getTimeNtp() {
-  TIME time;
-  timeClient.update();
-  time.hour = timeClient.getHours();
-  time.minute = timeClient.getMinutes();
-  time.seconds = timeClient.getSeconds();
-  time_t epochTime = timeClient.getEpochTime();
-  struct tm *ptm = gmtime((time_t *)&epochTime);
-  time.year = ptm->tm_year + 1900;
-  time.month = ptm->tm_mon + 1;
-  time.day = ptm->tm_mday;
-  time.valid = true;
-  return time;
-}
-
-TIME getTime() {
-  TIME time;
-  memset(&time, 0, sizeof(time));
-  if (WiFi.status() != WL_CONNECTED && rtcValid) {
-    return getTimeRtc();
-  } else if (WiFi.status() == WL_CONNECTED) {
-    return getTimeNtp();
+double calcBrightnessScale(u_int16_t activeLeds) {
+  double maxCurrent = maxCurrentPerLed * (double)activeLeds;
+  if (maxCurrent < maxCurrentAll) {
+    return 255.0;
   }
-  time.valid = false;
-  return time;
+  return 255.0 * maxCurrentAll / maxCurrent;
 }
 
-double calc_scale(u_int16_t active_leds) {
-  if (active_leds == 0) {
-    active_leds = NUMPIXELS;
+void showTime(COLOR color, COLOR background) {
+  Timestack *stack = timeProcessor->getStack();
+  TIMESTACK elem;
+  int buffer[4];
+
+  matrix.fillScreen(0);
+
+  if (settings->getUseBackgroundColor() == true) {
+    matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS,
+                    matrix.Color(background.r, background.g, background.b));
   }
-  double current_per_color = max_current_ma / (double) active_leds / 3.0;
-  return current_per_color / max_current_per_color_ma;
-}
-
-void handleOnConnect() {
-  brightness = INITIAL_BRIGHTNESS;
-  server.send(200, "text/html", index_html);
-}
-
-void handleCss() { server.send(200, "text/css", style_css); }
-
-void handleBrightness() {
-  String state = server.arg("LEDBrightness");
-  Serial.println(state);
-  if (state == "up")
-    brightness = brightness > 95 ? 100 : brightness + 5;
-  else
-    brightness = brightness < 5 ? 0 : brightness - 5;
-  server.send(200, "text/plain", String(brightness));
-  matrix.setBrightness(brightness * scale);
-}
-
-void handleDialect() {
-  String state = server.arg("switchDialect");
-  Serial.println(state);
-  if (state == "true") {
-    useDialect = true;
-  } else {
-    useDialect = false;
-  }
-  timeProcessor->setDialect(useDialect);
-  server.send(200, "text/plain", state);
-}
-
-void handleNotFound() { server.send(404, "text/plain", "Not found"); }
-
-void handleGetBrightness() {
-  server.send(200, "text/plain", String(brightness));
-}
-
-void handleGetTime() {
-  TIME time = getTime();
-  char timeStr[12];
-  sprintf(timeStr, "%02d:%02d:%02d", time.hour, time.minute, time.seconds);
-  server.send(200, "text/plain", timeStr);
-}
-
-void handleGetWordTime() {
-  char wordTime[NUMPIXELS];
-  char error[] = "Error getting the time";
-  if (timeProcessor->getWordTime(wordTime)) {
-    server.send(200, "text/plain", wordTime);
-  } else {
-    server.send(200, "text/plain", error);
-  }
-}
-
-void handleGetDialect() {
-  server.send(200, "text/plain", String((int)useDialect));
-}
-
-/**
- * European daylight savings time calculation by "jurs" from german arduino
- * forum. Idea from https://forum.arduino.cc/t/rtc-mit-sommerzeit/168068/2
- * Daylight saving time is active from last sunday in march till last sunday in
- * october
- *
- * @param epochTime Time in seconds since 01.01.1900
- * @param tzHours Time offset in hours from UTC time
- *
- * @return true when daylight time is active, false if not
- */
-boolean summertime_EU(TIME time, s8_t tzHours) {
-  u_int16_t year = time.year;
-  u_int8_t month = time.month;
-  u_int8_t day = time.day;
-  u_int8_t hour = time.hour;
-
-  if (month < 3 || month > 10) {
-    return false;
-  }
-  if (month > 3 && month < 10) {
-    return true;
+  numActiveLeds = 0;
+  for (int i = 0; i < stack->getSize(); ++i) {
+    if (!stack->get(&elem, i)) {
+      error = Error::TIMESTACK_GET_ELEM_FAILED;
+      return;
+    }
+    get_led_rectangle(elem.state, elem.useDialect, buffer);
+    matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3],
+                    matrix.Color(color.r, color.g, color.b));
+    numActiveLeds += (buffer[2] * buffer[3]);
   }
 
-  return (month == 3 &&
-          (hour + 24 * day) >=
-              (1 + tzHours + 24 * (31 - (5 * year / 4 + 4) % 7))) ||
-         (month == 10 &&
-          (hour + 24 * day) <
-              (1 + tzHours + 24 * (31 - (5 * year / 4 + 1) % 7)));
+  if (settings->getUseBackgroundColor() == true) {
+    numActiveLeds = NUMPIXELS;
+  }
+
+  matrix.setBrightness(settings->getBrightness() / 100.0 *
+                       calcBrightnessScale(numActiveLeds));
+  matrix.show();
+}
+
+void writeSettings(String data) {
+  File file = LittleFS.open("/settings.json", "w");
+  file.print(data);
+  file.close();
+  Serial.println("Saved settings");
+  Serial.println(data);
+}
+
+String readSettings() {
+  File file = LittleFS.open("/settings.json", "r");
+  if (!file) {
+    Serial.println("settings.json not found!");
+    return "";
+  }
+  String content = file.readString();
+  Serial.println(content);
+  return content;
+}
+
+void notifyClients(String settingsValues) { ws.textAll(settingsValues); }
+
+void updateSettings() {
+  timeProcessor->setDialect(settings->getUseDialect());
+  timeProcessor->setThreeQuater(settings->getUseThreeQuater());
+  timeProcessor->setQuaterPast(settings->getUseQuaterPast());
+  matrix.setBrightness(settings->getBrightness() / 100.0 *
+                       calcBrightnessScale(numActiveLeds));
+}
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len &&
+      info->opcode == WS_TEXT) {
+    data[len] = 0;
+    String message = (char *)data;
+    if (message.indexOf("Brightness") == 0) {
+      int brightness = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setBrightness(brightness);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("Dialect") == 0) {
+      int dialect = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseDialect(dialect > 0);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("ThreeQuater") == 0) {
+      int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseThreeQuater(threeQuater > 0);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("QuaterPast") == 0) {
+      int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseQuaterPast(quaterPast > 0);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("UseBackground") == 0) {
+      int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseBackgroundColor(quaterPast > 0);
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("MainColor") == 0) {
+      String mainColorStr = message.substring(message.indexOf("=") + 1);
+      char colorChar[9];
+      mainColorStr.toCharArray(colorChar, 9);
+      int mainColor = strtol(colorChar, 0, 16);
+
+      uint8_t r = (mainColor & 0xFF0000) >> 16;
+      uint8_t g = (mainColor & 0x00FF00) >> 8;
+      uint8_t b = mainColor & 0x0000FF;
+      settings->setMainColor(COLOR{r, g, b});
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("BackgroundColor") == 0) {
+      String backgroundColorStr = message.substring(message.indexOf("=") + 1);
+      char colorChar[9];
+      backgroundColorStr.toCharArray(colorChar, 9);
+      int backgroundColor = strtol(colorChar, 0, 16);
+
+      uint8_t r = (backgroundColor & 0xFF0000) >> 16;
+      uint8_t g = (backgroundColor & 0x00FF00) >> 8;
+      uint8_t b = backgroundColor & 0x0000FF;
+      settings->setBackgroundColor(COLOR{r, g, b});
+      notifyClients(settings->getJsonString());
+    }
+
+    if (strcmp((char *)data, "getValues") == 0) {
+      notifyClients(settings->getJsonString());
+    }
+    updateSettings();
+    writeSettings(settings->getJsonString());
+  }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
+             AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  switch (type) {
+  case WS_EVT_CONNECT:
+    Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
+                  client->remoteIP().toString().c_str());
+    break;
+  case WS_EVT_DISCONNECT:
+    Serial.printf("WebSocket client #%u disconnected\n", client->id());
+    break;
+  case WS_EVT_DATA:
+    handleWebSocketMessage(arg, data, len);
+    break;
+  case WS_EVT_PONG:
+  case WS_EVT_ERROR:
+    break;
+  }
+}
+
+void initWebSocket() {
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
 }
 
 void initWebFunctions() {
+  // Web Server Root URL
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/index.html", "text/html");
+  });
+  server.serveStatic("/", LittleFS, "/");
+
   server.begin();
   Serial.println("HTTP server started");
+
+  initWebSocket();
 
   timeClient.begin();
   Serial.println("NTP client started");
@@ -181,40 +222,52 @@ void initWebFunctions() {
 }
 
 void stopWebFunctions() {
-  server.stop();
+  server.end();
   Serial.println("HTTP server stopped");
 
   timeClient.end();
   Serial.println("NTP client stopped");
 }
 
-bool updateRtcTime() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Missing wifi connection, cannot adjust NTP time");
-    return false;
+// Initialize LittleFS
+void initFS() {
+  if (!LittleFS.begin()) {
+    Serial.println("An error has occurred while mounting LittleFS");
+  } else {
+    Serial.println("LittleFS mounted successfully");
   }
-
-  TIME time = getTimeNtp();
-  Serial.println("Adjust RTC time from NTP time");
-  rtc.adjust(DateTime(time.year, time.month, time.day, time.hour, time.minute,
-                      time.seconds));
-  return true;
 }
 
 void setup() {
-  TIME time;
-
   Serial.begin(9600);
-  delay(1000);
 
   matrix.begin();
   matrix.setTextWrap(false);
-  matrix.setBrightness(brightness * calc_scale(NUMPIXELS));
-  matrix.setTextColor(matrix.Color(255, 0, 0));
+
+  initFS();
+
+  settings->fromJsonString(readSettings());
+  updateSettings();
+
+  rtc.found = true;
+  rtc.valid = true;
+  if (!rtc.rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    rtc.found = false;
+  }
+
+  if (rtc.found == true && rtc.rtc.lostPower()) {
+    rtc.valid = false;
+  }
+
+  TIME time = getTime(&rtc, &timeClient, wifiConnected);
+  if (time.valid == true &&
+      timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
+    showTime(settings->getMainColor(), settings->getBackgroundColor());
+  }
 
   WiFi.mode(WIFI_STA);
-  wifiManager.setConfigPortalBlocking(false);
-
+  wifiManager.setConfigPortalTimeout(120);
   if (wifiManager.autoConnect("Wordclock")) {
     Serial.println("Connected to wifi :)");
     wifiConnected = true;
@@ -222,63 +275,30 @@ void setup() {
     Serial.println("Configportal at 192.168.4.1 running");
   }
 
-  if (!rtc.begin()) {
-    Serial.println("Couldn't find RTC");
-    rtcFound = false;
-    rtcValid = false;
-  }
-
-  if (rtcFound && rtc.lostPower()) {
-    rtcValid = false;
-  }
-
-  server.on("/", handleOnConnect);
-  server.on("/style.css", handleCss);
-  server.on("/setBrightness", handleBrightness);
-  server.on("/setDialect", handleDialect);
-  server.on("/readBrightness", handleGetBrightness);
-  server.on("/readTime", handleGetTime);
-  server.on("/readWordTime", handleGetWordTime);
-  server.on("/readDialect", handleGetDialect);
-  server.onNotFound(handleNotFound);
-
-  if (WiFi.status() == WL_CONNECTED) {
+  if (wifiConnected == true) {
     initWebFunctions();
-    time = getTime();
-    Serial.println("Set summertime offset");
-    if (summertime_EU(time, hourOffsetFromUTC)) {
-      timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
-    } else {
-      timeClient.setTimeOffset(hourOffsetFromUTC * 3600);
+    if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
+                         wifiConnected) != true) {
+      error = Error::SUMMERTIME_ERROR;
     }
-    timeClient.update();
   }
-
-  if (rtcFound && rtc.lostPower()) {
-    Serial.println("RTC lost power");
-    rtcValid = updateRtcTime();
-  }
-
-  matrix.setBrightness(100 * calc_scale(NUMPIXELS));
-  matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS, matrix.Color(255, 0, 0));
-  matrix.show();
-  delay(3000);
 }
 
 unsigned long lastRun = 0;
 u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
-u_int32_t checkDaylightTime = 1000;
+u_int32_t checkDaylightTime = 10000;
 unsigned long lastRtcSync = 0;
 u_int32_t syncRtc = 24 * 3600;
 unsigned long lastTimeUpdate = 0;
 u_int32_t updateTime = 1 * 1000;
 
-void loop() {
-  u_int16_t color;
-  error = false;
+bool showCaptivePortal = true;
 
-  wifiManager.process();
+void loop() {
+  error = Error::OK;
+
+  // wifiManager.process();
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
   }
@@ -287,42 +307,36 @@ void loop() {
   }
   wifiConnected = WiFi.status() == WL_CONNECTED;
 
-  TIME time = getTime();
+  TIME time = getTime(&rtc, &timeClient, wifiConnected);
   if (!time.valid) {
-    error = true;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    server.handleClient();
+    error = Error::NO_TIME;
   }
 
   if (time.valid &&
       !timeProcessor->update(time.hour, time.minute, time.seconds)) {
     Serial.println("Error occured");
-    error = true;
+    error = Error::TIME_TO_WORD_CONVERSION;
   }
 
-  if (WiFi.status() == WL_CONNECTED &&
+  if (wifiConnected == true &&
       millis() - lastDaylightCheck > checkDaylightTime) {
-    if (summertime_EU(time, hourOffsetFromUTC)) {
-      timeClient.setTimeOffset((hourOffsetFromUTC + 1) * 3600);
-    } else {
-      timeClient.setTimeOffset((hourOffsetFromUTC)*3600);
+    if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
+                         wifiConnected) != true) {
+      error = Error::SUMMERTIME_ERROR;
     }
-    time = getTime();
     lastDaylightCheck = millis();
   }
 
   if (millis() - lastRun > evalTimeEvery) {
     lastRun = millis();
     Serial.println("===========");
-    TIME ntpTime = getTimeNtp();
+    TIME ntpTime = getTimeNtp(&timeClient);
     Serial.print(ntpTime.hour);
     Serial.print(":");
     Serial.print(ntpTime.minute);
     Serial.print(":");
     Serial.println(ntpTime.seconds);
-    TIME rtcTime = getTimeRtc();
+    TIME rtcTime = getTimeRtc(&(rtc.rtc));
     Serial.print(rtcTime.hour);
     Serial.print(":");
     Serial.print(rtcTime.minute);
@@ -330,37 +344,21 @@ void loop() {
     Serial.println(rtcTime.seconds);
   }
 
-  if (millis() - lastRtcSync > syncRtc && rtcFound) {
-    rtcValid = updateRtcTime();
+  if (millis() - lastRtcSync > syncRtc && rtc.found == true) {
+    if (updateRtcTime(&rtc, &time, wifiConnected) == false) {
+      error = Error::UPDATE_RTC_TIME_ERROR;
+    }
     lastRtcSync = millis();
   }
 
-  color = matrix.Color(0, 255, 0);
-  if (error) {
-    color = matrix.Color(255, 0, 0);
+  if (error != Error::OK) {
+    settings->setMainColor(COLOR{255, 0, 0});
   }
 
-  if (millis() - lastTimeUpdate > updateTime && !error) {
-    Timestack *stack = timeProcessor->getStack();
-    TIMESTACK elem;
-    int buffer[4];
-
-    matrix.fillScreen(0);
-    active_leds_loop = 0;
-    for (int i = 0; i < stack->getSize(); ++i) {
-      if (!stack->get(&elem, i)) {
-        error = true;
-        return;
-      }
-      get_led_rectangle(elem.state, elem.useDialect, buffer);
-      matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3], color);
-      active_leds_loop += (buffer[2] * buffer[3]);
-    }
+  if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
+    showTime(settings->getMainColor(), settings->getBackgroundColor());
     lastTimeUpdate = millis();
   }
-
-  matrix.setBrightness(brightness * calc_scale(active_leds_loop));
-  matrix.show();
 
   delay(10);
 }

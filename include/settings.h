@@ -1,23 +1,43 @@
 #ifndef __SETTINGS_H__
 #define __SETTINGS_H__
 
-//#include <Arduino.h>
+typedef struct _color {
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+} COLOR;
 
-#define PIN D6
-#define COL_PIXELS 14
-#define ROW_PIXELS 14
-#define NUMPIXELS (COL_PIXELS * ROW_PIXELS)
-#define INITIAL_BRIGHTNESS 100
+class Settings {
+public:
+  Settings();
+  void setUseDialect(bool useDialect);
+  bool getUseDialect();
+  void setUseThreeQuater(bool useThreeQuater);
+  bool getUseThreeQuater();
+  void setUseQuaterPast(bool useQuaterPast);
+  bool getUseQuaterPast();
+  void setUseBackgroundColor(bool useBackgroundColor);
+  bool getUseBackgroundColor();
+  void setBrightness(int brightness);
+  int getBrightness();
+  String getJsonString();
+  void fromJsonString(String settings);
+  sint8_t getUtcHourOffset();
+  void setUtcHourOffset(sint8_t offset);
+  COLOR getMainColor();
+  void setMainColor(COLOR color);
+  COLOR getBackgroundColor();
+  void setBackgroundColor(COLOR color);
 
-const double max_current_ma = 400.0;
-const double allowed_current_per_color_ma =
-    (max_current_ma / (double)NUMPIXELS / 4.0);
-const double max_current_per_color_ma = 11.0;
-const u_int16_t offsetLowSecs = 150;
-const u_int16_t offsetHighSecs = 300 - offsetLowSecs;
-const bool useQuaterPast = true;
-const bool useThreeQuater = true;
-const s8_t hourOffsetFromUTC = 1;
-bool useDialect = false;
+private:
+  bool m_useQuaterPast;
+  bool m_useThreeQuater;
+  bool m_useDialect;
+  bool m_useBackgroundColor;
+  int m_brightness;
+  COLOR m_mainColor;
+  COLOR m_backgroundColor;
+  sint8_t m_utcHourOffset;
+};
 
 #endif
