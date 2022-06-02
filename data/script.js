@@ -60,6 +60,17 @@ function toggleQuaterPast(element) {
   websocket.send("QuaterPast=" + boolState);
 }
 
+function toggleBackgroundColor(element) {
+  var boolState = processCheckbox(element);
+  websocket.send("UseBackground=" + boolState);
+}
+
+function updateBackgroundColor(element) {
+  var colorValue = document.getElementById(element.id).value;
+  console.log(colorValue.replace("#", ""));
+  websocket.send("BackgroundColor=" + colorValue.replace("#", ""));
+}
+
 function updateMainColor(element) {
   var colorValue = document.getElementById(element.id).value;
   console.log(colorValue.replace("#", ""));

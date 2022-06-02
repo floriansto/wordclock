@@ -48,19 +48,24 @@ bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
 
 double calcBrightnessScale(u_int16_t activeLeds) {
-  double maxCurrent = maxCurrentPerLed * (double) activeLeds;
+  double maxCurrent = maxCurrentPerLed * (double)activeLeds;
   if (maxCurrent < maxCurrentAll) {
     return 255.0;
   }
   return 255.0 * maxCurrentAll / maxCurrent;
 }
 
-void showTime(COLOR color) {
+void showTime(COLOR color, COLOR background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   int buffer[4];
 
   matrix.fillScreen(0);
+
+  if (settings->getUseBackgroundColor() == true) {
+    matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS,
+                    matrix.Color(background.r, background.g, background.b));
+  }
   numActiveLeds = 0;
   for (int i = 0; i < stack->getSize(); ++i) {
     if (!stack->get(&elem, i)) {
@@ -71,6 +76,10 @@ void showTime(COLOR color) {
     matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3],
                     matrix.Color(color.r, color.g, color.b));
     numActiveLeds += (buffer[2] * buffer[3]);
+  }
+
+  if (settings->getUseBackgroundColor() == true) {
+    numActiveLeds = NUMPIXELS;
   }
 
   matrix.setBrightness(settings->getBrightness() / 100.0 *
@@ -133,6 +142,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       settings->setUseQuaterPast(quaterPast > 0);
       notifyClients(settings->getJsonString());
     }
+    if (message.indexOf("UseBackground") == 0) {
+      int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseBackgroundColor(quaterPast > 0);
+      notifyClients(settings->getJsonString());
+    }
     if (message.indexOf("MainColor") == 0) {
       String mainColorStr = message.substring(message.indexOf("=") + 1);
       char colorChar[9];
@@ -143,6 +157,18 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       uint8_t g = (mainColor & 0x00FF00) >> 8;
       uint8_t b = mainColor & 0x0000FF;
       settings->setMainColor(COLOR{r, g, b});
+      notifyClients(settings->getJsonString());
+    }
+    if (message.indexOf("BackgroundColor") == 0) {
+      String backgroundColorStr = message.substring(message.indexOf("=") + 1);
+      char colorChar[9];
+      backgroundColorStr.toCharArray(colorChar, 9);
+      int backgroundColor = strtol(colorChar, 0, 16);
+
+      uint8_t r = (backgroundColor & 0xFF0000) >> 16;
+      uint8_t g = (backgroundColor & 0x00FF00) >> 8;
+      uint8_t b = backgroundColor & 0x0000FF;
+      settings->setBackgroundColor(COLOR{r, g, b});
       notifyClients(settings->getJsonString());
     }
 
@@ -237,7 +263,7 @@ void setup() {
   TIME time = getTime(&rtc, &timeClient, wifiConnected);
   if (time.valid == true &&
       timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
-    showTime(settings->getMainColor());
+    showTime(settings->getMainColor(), settings->getBackgroundColor());
   }
 
   WiFi.mode(WIFI_STA);
@@ -330,7 +356,7 @@ void loop() {
   }
 
   if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
-    showTime(settings->getMainColor());
+    showTime(settings->getMainColor(), settings->getBackgroundColor());
     lastTimeUpdate = millis();
   }
 

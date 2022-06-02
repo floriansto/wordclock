@@ -16,6 +16,8 @@ public:
   bool getUseThreeQuater();
   void setUseQuaterPast(bool useQuaterPast);
   bool getUseQuaterPast();
+  void setUseBackgroundColor(bool useBackgroundColor);
+  bool getUseBackgroundColor();
   void setBrightness(int brightness);
   int getBrightness();
   String getJsonString();
@@ -24,13 +26,17 @@ public:
   void setUtcHourOffset(sint8_t offset);
   COLOR getMainColor();
   void setMainColor(COLOR color);
+  COLOR getBackgroundColor();
+  void setBackgroundColor(COLOR color);
 
 private:
   bool m_useQuaterPast;
   bool m_useThreeQuater;
   bool m_useDialect;
+  bool m_useBackgroundColor;
   int m_brightness;
   COLOR m_mainColor;
+  COLOR m_backgroundColor;
   sint8_t m_utcHourOffset;
 };
 
