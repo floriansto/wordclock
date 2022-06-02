@@ -147,7 +147,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       settings->setUseBackgroundColor(quaterPast > 0);
       notifyClients(settings->getJsonString());
     }
-    if (message.indexOf("MainColor") == 0) {
+    if (message.indexOf("mainColor") == 0) {
       String mainColorStr = message.substring(message.indexOf("=") + 1);
       char colorChar[9];
       mainColorStr.toCharArray(colorChar, 9);
@@ -159,7 +159,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       settings->setMainColor(COLOR{r, g, b});
       notifyClients(settings->getJsonString());
     }
-    if (message.indexOf("BackgroundColor") == 0) {
+    if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
       char colorChar[9];
       backgroundColorStr.toCharArray(colorChar, 9);

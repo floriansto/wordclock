@@ -44,14 +44,9 @@ function processCheckbox(element, id) {
   websocket.send(element.id + "=" + boolState);
 }
 
-function updateBackgroundColor(element) {
+function processColorPicker(element) {
   var colorValue = document.getElementById(element.id).value;
-  websocket.send("BackgroundColor=" + colorValue.replace("#", ""));
-}
-
-function updateMainColor(element) {
-  var colorValue = document.getElementById(element.id).value;
-  websocket.send("MainColor=" + colorValue.replace("#", ""));
+  websocket.send(element.id + "=" + colorValue.replace("#", ""));
 }
 
 function colorToHex(color) {
