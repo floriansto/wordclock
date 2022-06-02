@@ -50,47 +50,31 @@
     <table>
       <tr>
         <td>Use dialect</td>
-        <td><input id="switchDialect" type="checkbox" onclick="toggleDialect(this)"></td>
+        <td><input id="switchDialect" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
         <td>Use "dreiviertel"</td>
-        <td><input id="switchThreeQuater" type="checkbox" onclick="toggleThreeQuater(this)"></td>
+        <td><input id="switchThreeQuater" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
         <td>Use "viertel nach"</td>
-        <td><input id="switchQuaterPast" type="checkbox" onclick="toggleQuaterPast(this)"></td>
+        <td><input id="switchQuaterPast" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
     </table>
 
     <h4>Color Settings</h4>
     <table>
       <tr>
-        <td>Consistent color</td>
-        <td><input id="switchConsColor" type="checkbox" value="switchConsColor"></td>
-      </tr>
-      <tr>
-        <td>Enable background color</td>
-        <td><input id="switchBackgroundColor" type="checkbox" onclick="toggleBackgroundColor(this)"></td>
-      </tr>
-      <tr>
         <td>Main color</td>
         <td><input id="mainColor" type="color" onchange="updateMainColor(this)"></td>
       </tr>
       <tr>
+        <td>Enable background color</td>
+        <td><input id="switchBackgroundColor" type="checkbox" onclick="processCheckbox(this)"></td>
+      </tr>
+      <tr>
         <td>Background color</td>
         <td><input id="backgroundColor" type="color" onchange="updateBackgroundColor(this)"></td>
-      </tr>
-      <tr>
-        <td>"Es ist" color</td>
-        <td><input id="itIsColor" type="color"></td>
-      </tr>
-      <tr>
-        <td>Before/After color</td>
-        <td><input id="beforeAfterColor" type="color"></td>
-      </tr>
-      <tr>
-        <td>"Uhr" color</td>
-        <td><input id="clockColor" type="color"></td>
       </tr>
     </table>
   </div>

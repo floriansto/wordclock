@@ -32,48 +32,25 @@ function onClose(event) {
 function updateSliderBrightness(element) {
   var sliderValue = document.getElementById(element.id).value;
   document.getElementById(element.id + "Display").innerHTML = sliderValue;
-  console.log(sliderValue);
   websocket.send("Brightness=" + sliderValue.toString());
 }
 
-function processCheckbox(element) {
+function processCheckbox(element, id) {
   var checkboxState = document.getElementById(element.id).checked;
   var boolState = 0;
   if (checkboxState === true) {
     boolState = 1;
   }
-  return boolState;
-}
-
-function toggleDialect(element) {
-  var boolState = processCheckbox(element);
-  websocket.send("Dialect=" + boolState);
-}
-
-function toggleThreeQuater(element) {
-  var boolState = processCheckbox(element);
-  websocket.send("ThreeQuater=" + boolState);
-}
-
-function toggleQuaterPast(element) {
-  var boolState = processCheckbox(element);
-  websocket.send("QuaterPast=" + boolState);
-}
-
-function toggleBackgroundColor(element) {
-  var boolState = processCheckbox(element);
-  websocket.send("UseBackground=" + boolState);
+  websocket.send(element.id + "=" + boolState);
 }
 
 function updateBackgroundColor(element) {
   var colorValue = document.getElementById(element.id).value;
-  console.log(colorValue.replace("#", ""));
   websocket.send("BackgroundColor=" + colorValue.replace("#", ""));
 }
 
 function updateMainColor(element) {
   var colorValue = document.getElementById(element.id).value;
-  console.log(colorValue.replace("#", ""));
   websocket.send("MainColor=" + colorValue.replace("#", ""));
 }
 
@@ -87,7 +64,6 @@ function convertRGBtoHex(red, green, blue) {
 }
 
 function onMessage(event) {
-  console.log(event.data);
   var myObj = JSON.parse(event.data);
   var keys = Object.keys(myObj);
 

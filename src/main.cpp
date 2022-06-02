@@ -127,22 +127,22 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       settings->setBrightness(brightness);
       notifyClients(settings->getJsonString());
     }
-    if (message.indexOf("Dialect") == 0) {
+    if (message.indexOf("switchDialect") == 0) {
       int dialect = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseDialect(dialect > 0);
       notifyClients(settings->getJsonString());
     }
-    if (message.indexOf("ThreeQuater") == 0) {
+    if (message.indexOf("switchThreeQuater") == 0) {
       int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseThreeQuater(threeQuater > 0);
       notifyClients(settings->getJsonString());
     }
-    if (message.indexOf("QuaterPast") == 0) {
+    if (message.indexOf("switchQuaterPast") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseQuaterPast(quaterPast > 0);
       notifyClients(settings->getJsonString());
     }
-    if (message.indexOf("UseBackground") == 0) {
+    if (message.indexOf("switchBackgroundColor") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseBackgroundColor(quaterPast > 0);
       notifyClients(settings->getJsonString());
