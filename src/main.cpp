@@ -25,6 +25,8 @@
 #include "../include/timeUtils.h"
 #include "LittleFS.h"
 
+#define DEBUG 0
+
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
     ROW_PIXELS, COL_PIXELS, PIN,
     NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
@@ -309,7 +311,6 @@ bool showCaptivePortal = true;
 void loop() {
   error = Error::OK;
 
-  // wifiManager.process();
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
   }
@@ -338,6 +339,7 @@ void loop() {
     lastDaylightCheck = millis();
   }
 
+#if DEBUG == 1
   if (millis() - lastRun > evalTimeEvery) {
     lastRun = millis();
     Serial.println("===========");
@@ -354,6 +356,7 @@ void loop() {
     Serial.print(":");
     Serial.println(rtcTime.seconds);
   }
+#endif
 
   if (millis() - lastRtcSync > syncRtc && rtc.found == true) {
     if (updateRtcTime(&rtc, &time, wifiConnected) == false) {
