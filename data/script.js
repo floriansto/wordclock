@@ -3,11 +3,16 @@ var gateway = `ws://${window.location.hostname}/ws`;
 var websocket;
 window.addEventListener('load', onload);
 
+setInterval(function () {
+  websocket.send("getTime");
+}, 60000)
+
 function onload(event) {
   initWebSocket();
 }
 
 function getValues() {
+  websocket.send("getTime");
   websocket.send("getValues");
 }
 
@@ -33,6 +38,10 @@ function updateSliderBrightness(element) {
   var sliderValue = document.getElementById(element.id).value;
   document.getElementById(element.id + "Display").innerHTML = sliderValue;
   websocket.send("Brightness=" + sliderValue.toString());
+}
+
+function getTime() {
+  websocket.send("getTime")
 }
 
 function processCheckbox(element, id) {
@@ -77,6 +86,8 @@ function onMessage(event) {
     } else if (elem.getAttribute("type") === "color") {
       var color = myObj[key];
       document.getElementById(key).value = convertRGBtoHex(color.r, color.g, color.b);
+    } else if (key === "wordTime") {
+      document.getElementById(key).innerHTML = myObj[key];
     } else {
       document.getElementById(key).value = myObj[key];
     }

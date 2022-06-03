@@ -28,6 +28,7 @@ public:
   void setMainColor(COLOR color);
   COLOR getBackgroundColor();
   void setBackgroundColor(COLOR color);
+  JSONVar getJsonObject();
 
 private:
   bool m_useQuaterPast;

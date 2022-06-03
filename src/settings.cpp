@@ -52,9 +52,8 @@ void Settings::setBackgroundColor(COLOR color) { m_backgroundColor = color; }
 
 COLOR Settings::getBackgroundColor() { return m_backgroundColor; }
 
-String Settings::getJsonString() {
+JSONVar Settings::getJsonObject() {
   JSONVar settingsValues;
-
   settingsValues["brightnessSlider"] = this->getBrightness();
   settingsValues["switchDialect"] = (int)this->getUseDialect();
   settingsValues["switchThreeQuater"] = (int)this->getUseThreeQuater();
@@ -66,8 +65,11 @@ String Settings::getJsonString() {
   settingsValues["backgroundColor"]["r"] = m_backgroundColor.r;
   settingsValues["backgroundColor"]["g"] = m_backgroundColor.g;
   settingsValues["backgroundColor"]["b"] = m_backgroundColor.b;
+  return settingsValues;
+}
 
-  String jsonString = JSON.stringify(settingsValues);
+String Settings::getJsonString() {
+  String jsonString = JSON.stringify(this->getJsonObject());
   return jsonString;
 }
 

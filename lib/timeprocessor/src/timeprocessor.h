@@ -198,6 +198,7 @@ public:
   void setOffsetHighSecs(int offsetHighSecs);
   void setDialect(bool useDialect);
   bool update(int hour, int minute, int seconds);
+  bool update();
   bool getWordTime(char *wordTime);
   Timestack *getStack();
 

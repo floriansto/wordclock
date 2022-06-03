@@ -15,9 +15,9 @@
 #include <Arduino_JSON.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>
+#include <Wire.h>
 #include <math.h>
 #include <timeprocessor.h>
-#include <Wire.h>
 
 #include "../include/hw_settings.h"
 #include "../include/main.h"
@@ -93,7 +93,6 @@ void writeSettings(String data) {
   file.print(data);
   file.close();
   Serial.println("Saved settings");
-  Serial.println(data);
 }
 
 String readSettings() {
@@ -103,18 +102,28 @@ String readSettings() {
     return "";
   }
   String content = file.readString();
-  Serial.println(content);
   return content;
 }
-
-void notifyClients(String settingsValues) { ws.textAll(settingsValues); }
 
 void updateSettings() {
   timeProcessor->setDialect(settings->getUseDialect());
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
+  timeProcessor->update();
   matrix.setBrightness(settings->getBrightness() / 100.0 *
                        calcBrightnessScale(numActiveLeds));
+}
+
+void notifyClients() {
+  updateSettings();
+  writeSettings(settings->getJsonString());
+
+  JSONVar json = settings->getJsonObject();
+  char wordTime[NUMPIXELS];
+  timeProcessor->getWordTime(wordTime);
+  json["wordTime"] = wordTime;
+
+  ws.textAll(JSON.stringify(json));
 }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -126,27 +135,27 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (message.indexOf("Brightness") == 0) {
       int brightness = message.substring(message.indexOf("=") + 1).toInt();
       settings->setBrightness(brightness);
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
     if (message.indexOf("switchDialect") == 0) {
       int dialect = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseDialect(dialect > 0);
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
     if (message.indexOf("switchThreeQuater") == 0) {
       int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseThreeQuater(threeQuater > 0);
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
     if (message.indexOf("switchQuaterPast") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseQuaterPast(quaterPast > 0);
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
     if (message.indexOf("switchBackgroundColor") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseBackgroundColor(quaterPast > 0);
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
     if (message.indexOf("mainColor") == 0) {
       String mainColorStr = message.substring(message.indexOf("=") + 1);
@@ -158,7 +167,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       uint8_t g = (mainColor & 0x00FF00) >> 8;
       uint8_t b = mainColor & 0x0000FF;
       settings->setMainColor(COLOR{r, g, b});
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
     if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
@@ -170,14 +179,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       uint8_t g = (backgroundColor & 0x00FF00) >> 8;
       uint8_t b = backgroundColor & 0x0000FF;
       settings->setBackgroundColor(COLOR{r, g, b});
-      notifyClients(settings->getJsonString());
+      notifyClients();
     }
 
-    if (strcmp((char *)data, "getValues") == 0) {
-      notifyClients(settings->getJsonString());
+    if (strcmp((char *)data, "getValues") == 0 ||
+        strcmp((char *)data, "getTime") == 0) {
+      notifyClients();
     }
-    updateSettings();
-    writeSettings(settings->getJsonString());
   }
 }
 

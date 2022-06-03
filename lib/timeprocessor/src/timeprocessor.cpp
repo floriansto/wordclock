@@ -222,11 +222,7 @@ bool TimeProcessor::getTimeStack(Timestack *stack) {
   return ret;
 }
 
-bool TimeProcessor::update(int hour, int minutes, int seconds) {
-  m_hour = hour;
-  m_seconds = seconds;
-  m_minutes = minutes;
-
+bool TimeProcessor::update() {
   if (m_error) {
     return false;
   }
@@ -242,6 +238,14 @@ bool TimeProcessor::update(int hour, int minutes, int seconds) {
   }
 
   return true;
+}
+
+bool TimeProcessor::update(int hour, int minutes, int seconds) {
+  m_hour = hour;
+  m_seconds = seconds;
+  m_minutes = minutes;
+
+  return this->update();
 }
 
 bool TimeProcessor::calcWordTime() {
