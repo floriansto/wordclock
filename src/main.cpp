@@ -17,6 +17,7 @@
 #include <ESPAsyncWiFiManager.h>
 #include <math.h>
 #include <timeprocessor.h>
+#include <Wire.h>
 
 #include "../include/hw_settings.h"
 #include "../include/main.h"
@@ -241,6 +242,8 @@ void initFS() {
 void setup() {
   Serial.begin(9600);
 
+  Wire.begin(D2, D1);
+
   matrix.begin();
   matrix.setTextWrap(false);
 
@@ -349,10 +352,6 @@ void loop() {
       error = Error::UPDATE_RTC_TIME_ERROR;
     }
     lastRtcSync = millis();
-  }
-
-  if (error != Error::OK) {
-    settings->setMainColor(COLOR{255, 0, 0});
   }
 
   if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
