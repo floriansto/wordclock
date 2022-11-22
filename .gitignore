@@ -1,6 +1,7 @@
 venv/
 .pio/
 includes_gen/
+data/settings.json
 
 c_cpp_properties.json
 launch.json
