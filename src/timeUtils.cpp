@@ -5,25 +5,35 @@
 #include "../include/main.h"
 #include "../include/timeUtils.h"
 
+#define DEBUG 0
+
 bool updateRtcTime(RTC *rtc, TIME *time, bool wifiConnected) {
   if (wifiConnected == false && rtc->valid == false) {
+#if DEBUG
     Serial.println("Missing wifi connection, cannot adjust NTP time");
+#endif
     rtc->valid = false;
     return false;
   }
 
   if (wifiConnected == false && rtc->valid == true) {
+#if DEBUG
     Serial.println("Missing wifi connection, but rtc time seems to be valid");
+#endif
     return true;
   }
 
   if (rtc->found == false) {
+#if DEBUG
     Serial.println("RTC missing, cannot update time on the rtc");
+#endif
     rtc->valid = false;
     return false;
   }
 
+#if DEBUG
   Serial.println("Adjust RTC time from NTP time");
+#endif
   rtc->rtc.adjust(DateTime(time->year, time->month, time->day, time->hour,
                            time->minute, time->seconds));
   rtc->valid = true;
@@ -106,7 +116,9 @@ bool summertime_EU(TIME time, s8_t tzHours) {
 
 bool adjustSummertime(RTC *rtc, NTPClient *timeClient, s8_t utcHourOffsets,
                       bool wifiConnected) {
+#if DEBUG
   Serial.println("Set summertime offset");
+#endif
   TIME time = getTime(rtc, timeClient, wifiConnected);
   if (time.valid == false) {
     return false;
