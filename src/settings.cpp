@@ -1,7 +1,9 @@
 #include <Arduino.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJson.h>
+#include "LittleFS.h"
 
 #include "../include/settings.h"
+#include "../include/hw_settings.h"
 
 Settings::Settings() {
   m_useDialect = false;
@@ -52,29 +54,55 @@ void Settings::setBackgroundColor(COLOR color) { m_backgroundColor = color; }
 
 COLOR Settings::getBackgroundColor() { return m_backgroundColor; }
 
-JSONVar Settings::getJsonObject() {
-  JSONVar settingsValues;
-  settingsValues["brightnessSlider"] = this->getBrightness();
-  settingsValues["switchDialect"] = (int)this->getUseDialect();
-  settingsValues["switchThreeQuater"] = (int)this->getUseThreeQuater();
-  settingsValues["switchQuaterPast"] = (int)this->getUseQuaterPast();
-  settingsValues["switchBackgroundColor"] = (int)this->getUseBackgroundColor();
-  settingsValues["mainColor"]["r"] = m_mainColor.r;
-  settingsValues["mainColor"]["g"] = m_mainColor.g;
-  settingsValues["mainColor"]["b"] = m_mainColor.b;
-  settingsValues["backgroundColor"]["r"] = m_backgroundColor.r;
-  settingsValues["backgroundColor"]["g"] = m_backgroundColor.g;
-  settingsValues["backgroundColor"]["b"] = m_backgroundColor.b;
-  return settingsValues;
+void Settings::toJsonDoc(JsonDocument &json)
+{
+  json["brightnessSlider"] = this->getBrightness();
+  json["switchDialect"] = (int)this->getUseDialect();
+  json["switchThreeQuater"] = (int)this->getUseThreeQuater();
+  json["switchQuaterPast"] = (int)this->getUseQuaterPast();
+  json["switchBackgroundColor"] = (int)this->getUseBackgroundColor();
+  json["mainColor"]["r"] = m_mainColor.r;
+  json["mainColor"]["g"] = m_mainColor.g;
+  json["mainColor"]["b"] = m_mainColor.b;
+  json["backgroundColor"]["r"] = m_backgroundColor.r;
+  json["backgroundColor"]["g"] = m_backgroundColor.g;
+  json["backgroundColor"]["b"] = m_backgroundColor.b;
 }
 
-String Settings::getJsonString() {
-  String jsonString = JSON.stringify(this->getJsonObject());
-  return jsonString;
+void Settings::saveSettings(JsonDocument &json) {
+  this->toJsonDoc(json);
+
+  File file = LittleFS.open("/settings.json", "w");
+  if (!file) {
+    Serial.println("settings.json not found!");
+    return;
+  }
+  if (serializeJson(json, file) == 0)
+  {
+    Serial.println("Failed to save settings");
+    file.close();
+    return;
+  }
+  file.close();
+  Serial.println("Saved settings");
+
+  return;
 }
 
-void Settings::fromJsonString(String settings) {
-  JSONVar json = JSON.parse(settings);
+void Settings::loadSettings() {
+  File file = LittleFS.open("/settings.json", "r");
+  if (!file) {
+    Serial.println("settings.json not found!");
+    return;
+  }
+  StaticJsonDocument<JSON_SETTINGS_SIZE> json;
+  DeserializationError error = deserializeJson(json, file);
+  if (error)
+  {
+    Serial.println("Failed to read settings.json using default configuration");
+    return;
+  }
+
   m_brightness = json["brightnessSlider"];
   m_useDialect = ((int)json["switchDialect"]) > 0;
   m_useThreeQuater = ((int)json["switchThreeQuater"]) > 0;

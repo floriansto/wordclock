@@ -1,6 +1,7 @@
 #ifndef __SETTINGS_H__
 #define __SETTINGS_H__
 
+#define JSON_SETTINGS_SIZE 256
 typedef struct _color {
   uint8_t r;
   uint8_t g;
@@ -20,15 +21,15 @@ public:
   bool getUseBackgroundColor();
   void setBrightness(int brightness);
   int getBrightness();
-  String getJsonString();
-  void fromJsonString(String settings);
+  void loadSettings();
+  void saveSettings(JsonDocument &json);
+  void toJsonDoc(JsonDocument &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   COLOR getMainColor();
   void setMainColor(COLOR color);
   COLOR getBackgroundColor();
   void setBackgroundColor(COLOR color);
-  JSONVar getJsonObject();
 
 private:
   bool m_useQuaterPast;

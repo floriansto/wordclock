@@ -12,7 +12,7 @@
 #include <NTPClient.h>
 #include <RTClib.h>
 
-#include <Arduino_JSON.h>
+#include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>
 #include <Wire.h>
@@ -90,23 +90,6 @@ void showTime(COLOR color, COLOR background) {
   matrix.show();
 }
 
-void writeSettings(String data) {
-  File file = LittleFS.open("/settings.json", "w");
-  file.print(data);
-  file.close();
-  Serial.println("Saved settings");
-}
-
-String readSettings() {
-  File file = LittleFS.open("/settings.json", "r");
-  if (!file) {
-    Serial.println("settings.json not found!");
-    return "";
-  }
-  String content = file.readString();
-  return content;
-}
-
 void updateSettings() {
   timeProcessor->setDialect(settings->getUseDialect());
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
@@ -117,15 +100,23 @@ void updateSettings() {
 }
 
 void notifyClients() {
-  updateSettings();
-  writeSettings(settings->getJsonString());
-
-  JSONVar json = settings->getJsonObject();
+  StaticJsonDocument<JSON_SETTINGS_SIZE> json;
   char wordTime[NUMPIXELS];
+
+  updateSettings();
+
+  settings->toJsonDoc(json);
+  settings->saveSettings(json);
   timeProcessor->getWordTime(wordTime);
   json["wordTime"] = wordTime;
 
-  ws.textAll(JSON.stringify(json));
+  String str;
+  if (serializeJson(json, str) == 0)
+  {
+    Serial.println("Failed to serialize json");
+    return;
+  }
+  ws.textAll(str);
 }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
@@ -259,7 +250,7 @@ void setup() {
 
   initFS();
 
-  settings->fromJsonString(readSettings());
+  settings->loadSettings();
   updateSettings();
 
   rtc.found = true;
