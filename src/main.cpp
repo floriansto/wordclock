@@ -108,9 +108,28 @@ void notifyClients() {
   settings->toJsonDoc(json);
   settings->saveSettings(json);
   timeProcessor->getWordTime(wordTime);
-  json["wordTime"] = wordTime;
+}
 
+void getTimeToWeb(JsonDocument &json)
+{
+  char wordTime[NUMPIXELS];
+  timeProcessor->getWordTime(wordTime);
+  json["wordTime"] = wordTime;
+}
+
+void getSettingsToWeb(JsonDocument &json)
+{
+  settings->toJsonDoc(json);
+  settings->saveSettings(json);
+}
+
+void sendJson(void function(JsonDocument &json))
+{
+  StaticJsonDocument<JSON_SETTINGS_SIZE> json;
   String str;
+
+  (*function)(json);
+
   if (serializeJson(json, str) == 0)
   {
     Serial.println("Failed to serialize json");
@@ -134,16 +153,19 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       int dialect = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseDialect(dialect > 0);
       notifyClients();
+      sendJson(getTimeToWeb);
     }
     if (message.indexOf("switchThreeQuater") == 0) {
       int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseThreeQuater(threeQuater > 0);
       notifyClients();
+      sendJson(getTimeToWeb);
     }
     if (message.indexOf("switchQuaterPast") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseQuaterPast(quaterPast > 0);
       notifyClients();
+      sendJson(getTimeToWeb);
     }
     if (message.indexOf("switchBackgroundColor") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
@@ -175,9 +197,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       notifyClients();
     }
 
-    if (strcmp((char *)data, "getValues") == 0 ||
-        strcmp((char *)data, "getTime") == 0) {
-      notifyClients();
+    if (strcmp((char *)data, "getValues") == 0)
+    {
+      sendJson(getSettingsToWeb);
+    }
+    if (strcmp((char *)data, "getTime") == 0) {
+      sendJson(getTimeToWeb);
     }
   }
 }
