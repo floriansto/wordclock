@@ -1,7 +1,7 @@
 #ifndef __SETTINGS_H__
 #define __SETTINGS_H__
 
-#define JSON_SETTINGS_SIZE 256
+#define JSON_SETTINGS_SIZE 512
 typedef struct _color {
   uint8_t r;
   uint8_t g;

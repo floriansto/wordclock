@@ -42,6 +42,8 @@ RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 Settings *settings = new Settings();
+StaticJsonDocument<8192> words;
+
 TimeProcessor *timeProcessor = new TimeProcessor(
     settings->getUseDialect(), settings->getUseQuaterPast(),
     settings->getUseThreeQuater(), offsetLowSecs, offsetHighSecs, NUMPIXELS);
@@ -120,7 +122,6 @@ void getTimeToWeb(JsonDocument &json)
 void getSettingsToWeb(JsonDocument &json)
 {
   settings->toJsonDoc(json);
-  settings->saveSettings(json);
 }
 
 void sendJson(void function(JsonDocument &json))
@@ -265,6 +266,21 @@ void initFS() {
   }
 }
 
+void loadWordConfig()
+{
+  File file = LittleFS.open("/words.json", "r");
+  if (!file) {
+    Serial.println("words.json not found!");
+    return;
+  }
+  DeserializationError error = deserializeJson(words, file);
+  if (error)
+  {
+    Serial.println("Failed to read words.json using default configuration");
+    return;
+  }
+}
+
 void setup() {
   Serial.begin(9600);
 
@@ -276,6 +292,7 @@ void setup() {
   initFS();
 
   settings->loadSettings();
+  loadWordConfig();
   updateSettings();
 
   rtc.found = true;
@@ -316,7 +333,7 @@ void setup() {
 unsigned long lastRun = 0;
 u_int16_t evalTimeEvery = 1000;
 unsigned long lastDaylightCheck = 0;
-u_int32_t checkDaylightTime = 10000;
+u_int32_t checkDaylightTime = 3600000;
 unsigned long lastRtcSync = 0;
 u_int32_t syncRtc = 24 * 3600;
 unsigned long lastTimeUpdate = 0;
