@@ -100,6 +100,7 @@ void Settings::loadSettings() {
   if (error)
   {
     Serial.println("Failed to read settings.json using default configuration");
+    Serial.println(error.f_str());
     return;
   }
 
