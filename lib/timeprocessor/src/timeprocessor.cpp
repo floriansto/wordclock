@@ -8,11 +8,6 @@ int riseHour(int hour) { return hour == 12 ? 1 : ++hour; }
 
 ClockStr getStateFromNum(int num) { get_enum_from_num(num); }
 
-bool getWord(TIMESTACK *elem, char *word, int maxWordLen, int *i) {
-  get_word(elem->state, elem->useDialect);
-  return true;
-}
-
 TimeProcessor::TimeProcessor(bool useDialect, bool useQuaterPast,
                              bool useThreeQuater, int offsetLowSecs,
                              int offsetHighSecs, int numLetters)
@@ -20,16 +15,10 @@ TimeProcessor::TimeProcessor(bool useDialect, bool useQuaterPast,
       m_useThreeQuater{useThreeQuater}, m_offsetLowSecs{offsetLowSecs},
       m_offsetHighSecs{offsetHighSecs}, m_numLetters{numLetters} {
   m_error = false;
-  m_wordtime = (char *)malloc(sizeof(char) * m_numLetters);
   m_hour = 0;
   m_minutes = 0;
   m_seconds = 0;
-  if (m_wordtime == nullptr) {
-    m_error = true;
-  }
 }
-
-TimeProcessor::~TimeProcessor() { free(m_wordtime); }
 
 Times TimeProcessor::getTimeEnumFromSecs(int seconds) {
   get_times_enum_from_num(seconds);
@@ -42,13 +31,6 @@ bool TimeProcessor::getDialect() { return m_useDialect; }
 bool TimeProcessor::getQuaterPast() { return m_useQuaterPast; }
 bool TimeProcessor::getThreeQuater() { return m_useThreeQuater; }
 Timestack *TimeProcessor::getStack() { return &m_stack; }
-bool TimeProcessor::getWordTime(char *wordTime) {
-  if (m_error) {
-    return false;
-  }
-  strcpy(wordTime, m_wordtime);
-  return true;
-}
 
 void TimeProcessor::setQuaterPast(bool useQuaterPast) {
   m_useQuaterPast = useQuaterPast;
@@ -233,10 +215,6 @@ bool TimeProcessor::update() {
     return false;
   }
 
-  if (!calcWordTime()) {
-    return false;
-  }
-
   return true;
 }
 
@@ -246,36 +224,4 @@ bool TimeProcessor::update(int hour, int minutes, int seconds) {
   m_minutes = minutes;
 
   return this->update();
-}
-
-bool TimeProcessor::calcWordTime() {
-  Timestack *stack;
-  TIMESTACK elem;
-  char word[12];
-  int wordLen{0};
-  int cursor{0};
-
-  stack = getStack();
-
-  memset(m_wordtime, 0, sizeof(char) * m_numLetters);
-
-  for (int j = 0; j < stack->getSize(); ++j) {
-    if (!stack->get(&elem, j)) {
-      return false;
-    }
-    memset(word, 0, sizeof(word));
-    if (!getWord(&elem, word, sizeof(word) / sizeof(char), &wordLen)) {
-      return false;
-    }
-    if (cursor + wordLen < m_numLetters) {
-      if (cursor > 0) {
-        m_wordtime[cursor++] = ' ';
-      }
-      memcpy(&m_wordtime[cursor], word, sizeof(char) * wordLen);
-      cursor += wordLen;
-    } else {
-      return false;
-    }
-  }
-  return true;
 }
