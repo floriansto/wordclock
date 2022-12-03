@@ -42,7 +42,8 @@ RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 Settings *settings = new Settings();
-StaticJsonDocument<8192> words;
+DynamicJsonDocument wordsDoc(8192);
+JsonObject words;
 
 TimeProcessor *timeProcessor = new TimeProcessor(
     settings->getUseDialect(), settings->getUseQuaterPast(),
@@ -63,9 +64,18 @@ double calcBrightnessScale(u_int16_t activeLeds) {
 void showTime(COLOR color, COLOR background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
-  int buffer[4];
+  JsonArray list;
+  u_int8_t j;
+  int buffer[4]{0, 0, 0, 0};
+  String langKey;
+  String wordKey;
 
   matrix.fillScreen(0);
+
+  if (settings->getUseDialect())
+    langKey = "de-Dialect";
+  else
+    langKey = "de-DE";
 
   if (settings->getUseBackgroundColor() == true) {
     matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS,
@@ -77,9 +87,18 @@ void showTime(COLOR color, COLOR background) {
       error = Error::TIMESTACK_GET_ELEM_FAILED;
       return;
     }
-    get_led_rectangle(elem.state, elem.useDialect, buffer);
+
+    json_key_from_state(elem.state);
+
+    list = words[wordKey][langKey]["coords"].as<JsonArray>();
+    j = 0;
+    for (JsonVariant v : list) {
+      buffer[j++] = v.as<int>();
+    }
+
     matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3],
                     matrix.Color(color.r, color.g, color.b));
+
     numActiveLeds += (buffer[2] * buffer[3]);
   }
 
@@ -101,38 +120,51 @@ void updateSettings() {
                        calcBrightnessScale(numActiveLeds));
 }
 
+String getWordTime() {
+  TIMESTACK elem;
+  String langKey;
+  String wordKey;
+  Timestack *stack = timeProcessor->getStack();
+  String wordTime{""};
+
+  if (settings->getUseDialect())
+    langKey = "de-Dialect";
+  else
+    langKey = "de-DE";
+
+  for (int i = 0; i < stack->getSize(); ++i) {
+    if (!stack->get(&elem, i)) {
+      error = Error::TIMESTACK_GET_ELEM_FAILED;
+      wordTime = "Error";
+      break;
+    }
+    json_key_from_state(elem.state);
+    wordTime += words[wordKey][langKey]["name"].as<String>();
+    wordTime += " ";
+  }
+  return wordTime;
+}
+
 void notifyClients() {
   StaticJsonDocument<JSON_SETTINGS_SIZE> json;
-  char wordTime[NUMPIXELS];
 
   updateSettings();
 
   settings->toJsonDoc(json);
   settings->saveSettings(json);
-  timeProcessor->getWordTime(wordTime);
 }
 
-void getTimeToWeb(JsonDocument &json)
-{
-  char wordTime[NUMPIXELS];
-  timeProcessor->getWordTime(wordTime);
-  json["wordTime"] = wordTime;
-}
+void getTimeToWeb(JsonDocument &json) { json["wordTime"] = getWordTime(); }
 
-void getSettingsToWeb(JsonDocument &json)
-{
-  settings->toJsonDoc(json);
-}
+void getSettingsToWeb(JsonDocument &json) { settings->toJsonDoc(json); }
 
-void sendJson(void function(JsonDocument &json))
-{
+void sendJson(void function(JsonDocument &json)) {
   StaticJsonDocument<JSON_SETTINGS_SIZE> json;
   String str;
 
   (*function)(json);
 
-  if (serializeJson(json, str) == 0)
-  {
+  if (serializeJson(json, str) == 0) {
     Serial.println("Failed to serialize json");
     return;
   }
@@ -198,8 +230,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       notifyClients();
     }
 
-    if (strcmp((char *)data, "getValues") == 0)
-    {
+    if (strcmp((char *)data, "getValues") == 0) {
       sendJson(getSettingsToWeb);
     }
     if (strcmp((char *)data, "getTime") == 0) {
@@ -266,19 +297,34 @@ void initFS() {
   }
 }
 
-void loadWordConfig()
-{
+void loadWordConfig() {
   File file = LittleFS.open("/words.json", "r");
   if (!file) {
     Serial.println("words.json not found!");
     return;
   }
-  DeserializationError error = deserializeJson(words, file);
-  if (error)
-  {
+  DeserializationError error = deserializeJson(wordsDoc, file);
+  if (error) {
+    file.close();
     Serial.println("Failed to read words.json using default configuration");
+    Serial.println(error.f_str());
     return;
   }
+  file.close();
+
+  words = wordsDoc.as<JsonObject>();
+  for (JsonObject::iterator it = words.begin(); it != words.end(); ++it) {
+    if (!words[it->key()].containsKey("de-DE")) {
+      words.remove(it);
+      continue;
+    }
+
+    if (!words[it->key()].containsKey("de-Dialect"))
+      words[it->key()]["de-Dialect"] = words[it->key()]["de-DE"];
+  }
+#if DEBUG
+  serializeJsonPretty(words, Serial);
+#endif
 }
 
 void setup() {
