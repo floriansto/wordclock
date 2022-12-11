@@ -84,3 +84,18 @@ table, th, td{
   background: goldenrod;
   cursor: pointer;
 }
+
+.table_preview, .tr_preview, .td_preview {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+.tr_preview, .td_preview {
+  height: 30px;
+  width: 30px;
+}
+
+.td_preview {
+  text-align: center;
+  vertical-align: center;
+}

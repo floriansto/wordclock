@@ -93,3 +93,29 @@ function onMessage(event) {
     }
   }
 }
+
+function createTable(tableData) {
+  var table = document.getElementById('preview');
+  var tableBody = document.createElement('tbody');
+
+  console.log(tableData["clock"])
+
+  tableData.forEach(function (rowData) {
+    var row = document.createElement('tr');
+    row.classList.add("tr_preview")
+
+    rowData.forEach(function (cellData) {
+      var cell = document.createElement('td');
+      cell.classList.add("td_preview")
+      cell.appendChild(document.createTextNode(cellData));
+      row.appendChild(cell);
+    });
+
+    tableBody.appendChild(row);
+  });
+
+  table.appendChild(tableBody);
+  document.body.appendChild(table);
+}
+
+createTable(letters["clock"])
