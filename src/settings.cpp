@@ -13,11 +13,11 @@ Settings::Settings() {
   settings["switchThreeQuater"] = true;
   settings["switchQuaterPast"] = true;
   settings["switchBackgroundColor"] = true;
+  settings["utcTimeOffset"] = 1;
   JsonArray array = settings.createNestedArray("mainColor");
   copyArray(mainColor, array);
   array = settings.createNestedArray("backgroundColor");
   copyArray(bgColor, array);
-  m_utcHourOffset = 1;
 }
 
 void Settings::setUseDialect(bool useDialect) { settings["switchDialect"] = useDialect; }
@@ -46,9 +46,9 @@ int Settings::getBrightness() { return settings["brightnessSlider"]; }
 
 void Settings::setBrightness(int brightness) { settings["brightnessSlider"] = brightness; }
 
-void Settings::setUtcHourOffset(sint8_t offset) { m_utcHourOffset = offset; }
+void Settings::setUtcHourOffset(sint8_t offset) { settings["utcTimeOffset"] = offset; }
 
-sint8_t Settings::getUtcHourOffset() { return m_utcHourOffset; }
+sint8_t Settings::getUtcHourOffset() { return settings["utcTimeOffset"]; }
 
 void Settings::setMainColor(COLOR color) {
   settings["mainColor"][0] = color.r;
@@ -83,6 +83,7 @@ void Settings::toJsonDoc(JsonDocument &json)
   json["backgroundColor"]["r"] = settings["backgroundColor"][0];
   json["backgroundColor"]["g"] = settings["backgroundColor"][1];
   json["backgroundColor"]["b"] = settings["backgroundColor"][2];
+  json["utcTimeOffset"] = settings["utcTimeOffset"];
 }
 
 void Settings::saveSettings(JsonDocument &json) {

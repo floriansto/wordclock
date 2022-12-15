@@ -58,6 +58,13 @@ function processColorPicker(element) {
   websocket.send(element.id + "=" + colorValue.replace("#", ""));
 }
 
+function processTextInput(element, event) {
+  if (event.key === "Enter") {
+    var offset = document.getElementById(element.id);
+    websocket.send(element.id + "=" + offset.value);
+  }
+}
+
 function colorToHex(color) {
   var hexadecimal = color.toString(16);
   return hexadecimal.length == 1 ? "0" + hexadecimal : hexadecimal;
