@@ -17,6 +17,7 @@ Settings::Settings() {
   copyArray(mainColor, array);
   array = settings.createNestedArray("backgroundColor");
   copyArray(bgColor, array);
+  m_utcHourOffset = 1;
 }
 
 void Settings::setUseDialect(bool useDialect) { settings["switchDialect"] = useDialect; }
