@@ -77,19 +77,46 @@ function onMessage(event) {
       document.getElementById(key + "Display").innerHTML = myObj[key];
     }
     elem = document.getElementById(key);
-    if (elem.getAttribute("type") === "checkbox") {
-      if (myObj[key] === 1) {
-        elem.checked = true;
+    if (elem != null) {
+      if (elem.getAttribute("type") === "checkbox") {
+        if (myObj[key] === 1) {
+          elem.checked = true;
+        } else {
+          elem.checked = false;
+        }
+      } else if (elem.getAttribute("type") === "color") {
+        var color = myObj[key];
+        document.getElementById(key).value = convertRGBtoHex(color.r, color.g, color.b);
       } else {
-        elem.checked = false;
+        document.getElementById(key).value = myObj[key];
       }
-    } else if (elem.getAttribute("type") === "color") {
-      var color = myObj[key];
-      document.getElementById(key).value = convertRGBtoHex(color.r, color.g, color.b);
-    } else if (key === "wordTime") {
+    }
+
+    if (key === "wordTime") {
       document.getElementById(key).innerHTML = myObj[key];
-    } else {
-      document.getElementById(key).value = myObj[key];
+    } else if (key === "activeLeds") {
+
+      var table = document.getElementById("preview");
+      var mainColor = document.getElementById("mainColor").value;
+      var backgroundColor = document.getElementById("backgroundColor").value;
+      var useBackgroundColor = document.getElementById("switchBackgroundColor").checked;
+
+      if (!useBackgroundColor)
+        backgroundColor = "white";
+
+      var i = 0;
+      for (let row of table.rows) {
+        var leds = myObj[key][i];
+        var j = 0;
+        for (let cell of row.cells) {
+          if (leds & (1 << j))
+            cell.style.backgroundColor = mainColor;
+          else
+            cell.style.backgroundColor = backgroundColor;
+          ++j;
+        }
+        ++i;
+      }
     }
   }
 }
