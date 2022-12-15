@@ -99,3 +99,14 @@ table, th, td{
   text-align: center;
   vertical-align: center;
 }
+
+.word_table, .word_th, .word_td{
+  text-align: left;
+  vertical-align: center;
+  height: 30px;
+  padding: 7px;
+  color: gray;
+  border: 1px solid rgb(201, 201, 201);
+  border-collapse: collapse;
+}
+

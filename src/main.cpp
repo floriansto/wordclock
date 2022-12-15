@@ -301,6 +301,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       notifyClients();
       sendJson(getTimeToWeb);
     }
+    if (message.indexOf("wordConfig") == 0) {
+      String wordConfig = message.substring(message.indexOf("=") + 1);
+      Serial.println(wordConfig);
+    }
 
     if (strcmp((char *)data, "getValues") == 0) {
       sendJson(getSettingsToWeb);

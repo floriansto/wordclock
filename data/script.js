@@ -97,7 +97,7 @@ function onMessage(event) {
     } else if (key === "activeLeds") {
 
       var table = document.getElementById("preview");
-      var mainColor = document.getElementById("mainColor").value;
+      var mainColor = "#f5c211";
       var backgroundColor = document.getElementById("backgroundColor").value;
       var useBackgroundColor = document.getElementById("switchBackgroundColor").checked;
 
@@ -125,8 +125,6 @@ function createTable(tableData) {
   var table = document.getElementById('preview');
   var tableBody = document.createElement('tbody');
 
-  console.log(tableData["clock"])
-
   tableData.forEach(function (rowData) {
     var row = document.createElement('tr');
     row.classList.add("tr_preview")
@@ -143,6 +141,117 @@ function createTable(tableData) {
 
   table.appendChild(tableBody);
   document.body.appendChild(table);
+}
+
+function addRow(tableID) {
+  var table = document.getElementById(tableID);
+  var rowCount = table.rows.length;
+  var row = table.insertRow(rowCount);
+
+  row.classList.add("word_tr")
+  var colCount = table.rows[1].cells.length;
+
+  for (var i = 0; i < colCount; i++) {
+
+    var newcell = row.insertCell(i);
+    newcell.classList.add("word_td")
+
+    switch (i) {
+      case 0:
+        newcell.innerHTML = '<td class="word_td"><input type="checkbox""></td>';
+        break;
+      case 1:
+        newcell.innerHTML = '<td class="word_td"><input type="text""></td>';
+        break;
+      case 2:
+        newcell.innerHTML = '<td class="word_td"><input type="color""></td>';
+        break;
+      case 3:
+        newcell.innerHTML = '<td class="word_td"><select name="When"><option value="always">Always</option><option value="date">Date</option></select></td>';
+        break;
+      case 4:
+        newcell.innerHTML = '<td class="word_td"><input type="date""></td>';
+        break;
+      case 5:
+        newcell.innerHTML = '<td class="word_td"><button type="button">Delete</button></td>';
+        break;
+      default:
+        newcell.innerHTML = "Unknown";
+        break;
+    }
+
+    switch (newcell.childNodes[0].type) {
+      case "text":
+        newcell.childNodes[0].value = "GLÜCK";
+        break;
+      case "color":
+        newcell.childNodes[0].value = "#FCB821";
+        break;
+      case "checkbox":
+        newcell.childNodes[0].checked = true;
+        break;
+      case "select-one":
+        newcell.childNodes[0].selectedIndex = 1;
+        break;
+      case "button":
+        newcell.childNodes[0].addEventListener("click", function(event){
+          $(this).closest('tr').remove();
+        });
+        break;
+    }
+  }
+}
+
+function saveWords() {
+  var table = document.getElementById("word-config");
+  var data = new Array();
+  var i = 0;
+  for (let row of table.rows) {
+    if (i === 0) {
+      ++i;
+      continue
+    }
+    let jsonContent = {};
+    for (let cell of row.cells) {
+      let content = cell.childNodes[0];
+
+      if (content === undefined)
+        continue
+
+      switch (content.type) {
+        case "text":
+          jsonContent["words"] = content.value;
+          break;
+        case "color":
+          jsonContent["color"] = content.value.replace("#", "");
+          break;
+        case "checkbox":
+          jsonContent["enable"] = content.checked;
+          break;
+        case "select-one":
+          jsonContent["when"] = content.options[content.selectedIndex].text;
+          break;
+        case "date":
+          var dateVal = new Date(content.value);
+          jsonContent["date"] = {};
+          jsonContent["date"]["valid"] = false;
+          if (dateVal instanceof Date && !isNaN(dateVal)) {
+            jsonContent["date"] = {"day": dateVal.getDate(), "month": dateVal.getMonth() + 1};
+            jsonContent["date"]["valid"] = true;
+          }
+          break;
+        default:
+          if (i === 1)
+            jsonContent["words"] = "TIME";
+
+      }
+    }
+    data.push(jsonContent);
+    ++i;
+  }
+  console.log("Save word config");
+  console.log(data);
+  websocket.send("wordConfig=" + JSON.stringify(data));
 }
 
 createTable(letters["clock"])
