@@ -143,6 +143,10 @@ void getActiveLeds(u_int16_t *dest) {
   else
     langKey = "de-DE";
 
+  /* Raise datatype of dest to u_int32_t to handle more
+  than 16 columns of leds. */
+  static_assert(COL_PIXELS <= 16);
+
   for (u_int8_t k = 0; k < stack->getSize(); ++k) {
     if (!stack->get(&elem, k)) {
       error = Error::TIMESTACK_GET_ELEM_FAILED;
