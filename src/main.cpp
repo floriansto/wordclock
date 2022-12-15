@@ -61,11 +61,22 @@ double calcBrightnessScale(u_int16_t activeLeds) {
   return 255.0 * maxCurrentAll / maxCurrent;
 }
 
+void getWordCoords(int *buffer, String wordKey, String langKey) {
+  JsonArray list;
+  u_int8_t j;
+
+  list = words[wordKey][langKey]["coords"].as<JsonArray>();
+
+  j = 0;
+  for (JsonVariant v : list) {
+    buffer[j++] = v.as<int>();
+  }
+}
+
 void showTime(COLOR color, COLOR background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   JsonArray list;
-  u_int8_t j;
   int buffer[4]{0, 0, 0, 0};
   String langKey;
   String wordKey;
@@ -89,12 +100,7 @@ void showTime(COLOR color, COLOR background) {
     }
 
     json_key_from_state(elem.state);
-
-    list = words[wordKey][langKey]["coords"].as<JsonArray>();
-    j = 0;
-    for (JsonVariant v : list) {
-      buffer[j++] = v.as<int>();
-    }
+    getWordCoords(buffer, wordKey, langKey);
 
     matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3],
                     matrix.Color(color.r, color.g, color.b));
@@ -120,6 +126,45 @@ void updateSettings() {
                        calcBrightnessScale(numActiveLeds));
 }
 
+void getActiveLeds(u_int16_t *dest) {
+  Timestack *stack = timeProcessor->getStack();
+  TIMESTACK elem;
+  JsonArray list;
+  int buffer[4]{0, 0, 0, 0};
+  String langKey;
+  String wordKey;
+  u_int8_t x;
+  u_int8_t y;
+  u_int8_t x_len;
+  u_int8_t y_len;
+
+  if (settings->getUseDialect())
+    langKey = "de-Dialect";
+  else
+    langKey = "de-DE";
+
+  for (u_int8_t k = 0; k < stack->getSize(); ++k) {
+    if (!stack->get(&elem, k)) {
+      error = Error::TIMESTACK_GET_ELEM_FAILED;
+      return;
+    }
+
+    json_key_from_state(elem.state);
+    getWordCoords(buffer, wordKey, langKey);
+
+    x = buffer[0];
+    y = buffer[1];
+    x_len = buffer[2];
+    y_len = buffer[3];
+
+    for (u_int8_t j = y; j < y + y_len; ++j) {
+      for (u_int8_t i = x; i < x + x_len; ++i) {
+        dest[j] |= 1 << i;
+      }
+    }
+  }
+}
+
 String getWordTime() {
   TIMESTACK elem;
   String langKey;
@@ -139,6 +184,7 @@ String getWordTime() {
       break;
     }
     json_key_from_state(elem.state);
+
     wordTime += words[wordKey][langKey]["name"].as<String>();
     wordTime += " ";
   }
@@ -154,7 +200,26 @@ void notifyClients() {
   settings->saveSettings(json);
 }
 
-void getTimeToWeb(JsonDocument &json) { json["wordTime"] = getWordTime(); }
+JsonArray getActiveLedsToWeb(JsonDocument &json) {
+  String jsonString;
+  u_int16_t activeLeds[ROW_PIXELS];
+  memset(activeLeds, 0, sizeof(activeLeds));
+
+  getActiveLeds(activeLeds);
+
+  JsonArray array = json.createNestedArray("activeLeds");
+
+  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
+    array.add(activeLeds[ROW_PIXELS - 1 - i]);
+  }
+
+  return array;
+}
+
+void getTimeToWeb(JsonDocument &json) {
+  json["wordTime"] = getWordTime();
+  getActiveLedsToWeb(json);
+}
 
 void getSettingsToWeb(JsonDocument &json) { settings->toJsonDoc(json); }
 
@@ -204,6 +269,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseBackgroundColor(quaterPast > 0);
       notifyClients();
+      sendJson(getTimeToWeb);
     }
     if (message.indexOf("mainColor") == 0) {
       String mainColorStr = message.substring(message.indexOf("=") + 1);
@@ -216,6 +282,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       uint8_t b = mainColor & 0x0000FF;
       settings->setMainColor(COLOR{r, g, b});
       notifyClients();
+      sendJson(getTimeToWeb);
     }
     if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
@@ -228,6 +295,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       uint8_t b = backgroundColor & 0x0000FF;
       settings->setBackgroundColor(COLOR{r, g, b});
       notifyClients();
+      sendJson(getTimeToWeb);
     }
 
     if (strcmp((char *)data, "getValues") == 0) {
