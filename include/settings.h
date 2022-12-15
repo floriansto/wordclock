@@ -32,13 +32,7 @@ public:
   void setBackgroundColor(COLOR color);
 
 private:
-  bool m_useQuaterPast;
-  bool m_useThreeQuater;
-  bool m_useDialect;
-  bool m_useBackgroundColor;
-  int m_brightness;
-  COLOR m_mainColor;
-  COLOR m_backgroundColor;
+  StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
   sint8_t m_utcHourOffset;
 };
 
