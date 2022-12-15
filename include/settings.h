@@ -33,7 +33,6 @@ public:
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
-  sint8_t m_utcHourOffset;
 };
 
 #endif

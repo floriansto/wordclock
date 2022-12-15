@@ -301,6 +301,16 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       notifyClients();
       sendJson(getTimeToWeb);
     }
+    if (message.indexOf("utcTimeOffset") == 0) {
+      int offset = message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUtcHourOffset(offset);
+      if (adjustSummertime(&rtc, &timeClient, offset,
+                           wifiConnected) != true) {
+        error = Error::SUMMERTIME_ERROR;
+      }
+      notifyClients();
+      sendJson(getTimeToWeb);
+    }
     if (message.indexOf("wordConfig") == 0) {
       String wordConfig = message.substring(message.indexOf("=") + 1);
       Serial.println(wordConfig);
