@@ -6,78 +6,92 @@
 #include "../include/hw_settings.h"
 
 Settings::Settings() {
-  m_useDialect = false;
-  m_useQuaterPast = true;
-  m_useThreeQuater = true;
-  m_useBackgroundColor = false;
-  m_brightness = 100;
-  m_utcHourOffset = 1;
-  m_mainColor = COLOR{0, 255, 0};
-  m_backgroundColor = COLOR{255, 0, 0};
+  int mainColor[3]{0, 255, 0};
+  int bgColor[3]{246, 245, 244};
+  settings["brightnessSlider"] = 100;
+  settings["switchDialect"] = false;
+  settings["switchThreeQuater"] = true;
+  settings["switchQuaterPast"] = true;
+  settings["switchBackgroundColor"] = true;
+  JsonArray array = settings.createNestedArray("mainColor");
+  copyArray(mainColor, array);
+  array = settings.createNestedArray("backgroundColor");
+  copyArray(bgColor, array);
 }
 
-void Settings::setUseDialect(bool useDialect) { m_useDialect = useDialect; }
+void Settings::setUseDialect(bool useDialect) { settings["switchDialect"] = useDialect; }
 
-bool Settings::getUseDialect() { return m_useDialect; }
+bool Settings::getUseDialect() { return settings["switchDialect"]; }
 
 void Settings::setUseThreeQuater(bool useThreeQuater) {
-  m_useThreeQuater = useThreeQuater;
+  settings["switchThreeQuater"] = useThreeQuater;
 }
 
-bool Settings::getUseThreeQuater() { return m_useThreeQuater; }
+bool Settings::getUseThreeQuater() { return settings["switchThreeQuater"]; }
 
 void Settings::setUseQuaterPast(bool useQuaterPast) {
-  m_useQuaterPast = useQuaterPast;
+  settings["switchQuaterPast"] = useQuaterPast;
 }
 
-bool Settings::getUseQuaterPast() { return m_useQuaterPast; }
+bool Settings::getUseQuaterPast() { return settings["switchQuaterPast"]; }
 
 void Settings::setUseBackgroundColor(bool useBackgroundColor) {
-  m_useBackgroundColor = useBackgroundColor;
+  settings["switchBackgroundColor"] = useBackgroundColor;
 }
 
-bool Settings::getUseBackgroundColor() { return m_useBackgroundColor; }
+bool Settings::getUseBackgroundColor() { return settings["switchBackgroundColor"]; }
 
-int Settings::getBrightness() { return m_brightness; }
+int Settings::getBrightness() { return settings["brightnessSlider"]; }
 
-void Settings::setBrightness(int brightness) { m_brightness = brightness; }
+void Settings::setBrightness(int brightness) { settings["brightnessSlider"] = brightness; }
 
 void Settings::setUtcHourOffset(sint8_t offset) { m_utcHourOffset = offset; }
 
 sint8_t Settings::getUtcHourOffset() { return m_utcHourOffset; }
 
-void Settings::setMainColor(COLOR color) { m_mainColor = color; }
+void Settings::setMainColor(COLOR color) {
+  settings["mainColor"][0] = color.r;
+  settings["mainColor"][1] = color.g;
+  settings["mainColor"][2] = color.b;
+}
 
-COLOR Settings::getMainColor() { return m_mainColor; }
+COLOR getColor(JsonArray color) {
+  return COLOR{color[0], color[1], color[2]};
+}
 
-void Settings::setBackgroundColor(COLOR color) { m_backgroundColor = color; }
+COLOR Settings::getMainColor() { return getColor(settings["mainColor"]); }
 
-COLOR Settings::getBackgroundColor() { return m_backgroundColor; }
+void Settings::setBackgroundColor(COLOR color) {
+  settings["backgroundColor"][0] = color.r;
+  settings["backgroundColor"][1] = color.g;
+  settings["backgroundColor"][2] = color.b;
+}
+
+COLOR Settings::getBackgroundColor() { return getColor(settings["backgroundColor"]); }
 
 void Settings::toJsonDoc(JsonDocument &json)
 {
-  json["brightnessSlider"] = this->getBrightness();
-  json["switchDialect"] = (int)this->getUseDialect();
-  json["switchThreeQuater"] = (int)this->getUseThreeQuater();
-  json["switchQuaterPast"] = (int)this->getUseQuaterPast();
-  json["switchBackgroundColor"] = (int)this->getUseBackgroundColor();
-  json["mainColor"]["r"] = m_mainColor.r;
-  json["mainColor"]["g"] = m_mainColor.g;
-  json["mainColor"]["b"] = m_mainColor.b;
-  json["backgroundColor"]["r"] = m_backgroundColor.r;
-  json["backgroundColor"]["g"] = m_backgroundColor.g;
-  json["backgroundColor"]["b"] = m_backgroundColor.b;
+  json["brightnessSlider"] = settings["brightnessSlider"];
+  json["switchDialect"] = (int)settings["switchDialect"];
+  json["switchThreeQuater"] = (int)settings["switchThreeQuater"];
+  json["switchQuaterPast"] = (int)settings["switchQuaterPast"];
+  json["switchBackgroundColor"] = (int)settings["switchBackgroundColor"];
+  json["mainColor"]["r"] = settings["mainColor"][0];
+  json["mainColor"]["g"] = settings["mainColor"][1];
+  json["mainColor"]["b"] = settings["mainColor"][2];
+  json["backgroundColor"]["r"] = settings["backgroundColor"][0];
+  json["backgroundColor"]["g"] = settings["backgroundColor"][1];
+  json["backgroundColor"]["b"] = settings["backgroundColor"][2];
 }
 
 void Settings::saveSettings(JsonDocument &json) {
-  this->toJsonDoc(json);
-
   File file = LittleFS.open("/settings.json", "w");
+
   if (!file) {
     Serial.println("settings.json not found!");
     return;
   }
-  if (serializeJson(json, file) == 0)
+  if (serializeJson(settings, file) == 0)
   {
     Serial.println("Failed to save settings");
     file.close();
@@ -95,24 +109,12 @@ void Settings::loadSettings() {
     Serial.println("settings.json not found!");
     return;
   }
-  StaticJsonDocument<JSON_SETTINGS_SIZE> json;
-  DeserializationError error = deserializeJson(json, file);
+  DeserializationError error = deserializeJson(settings, file);
   if (error)
   {
     Serial.println("Failed to read settings.json using default configuration");
     Serial.println(error.f_str());
     return;
   }
-
-  m_brightness = json["brightnessSlider"];
-  m_useDialect = ((int)json["switchDialect"]) > 0;
-  m_useThreeQuater = ((int)json["switchThreeQuater"]) > 0;
-  m_useQuaterPast = ((int)json["switchQuaterPast"]) > 0;
-  m_useBackgroundColor = ((int)json["switchBackgroundColor"]) > 0;
-  m_mainColor.r = (int)json["mainColor"]["r"];
-  m_mainColor.g = (int)json["mainColor"]["g"];
-  m_mainColor.b = (int)json["mainColor"]["b"];
-  m_backgroundColor.r = (int)json["backgroundColor"]["r"];
-  m_backgroundColor.g = (int)json["backgroundColor"]["g"];
-  m_backgroundColor.b = (int)json["backgroundColor"]["b"];
+  Serial.println("Loaded settings");
 }
