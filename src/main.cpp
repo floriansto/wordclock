@@ -196,12 +196,8 @@ String getWordTime() {
 }
 
 void notifyClients() {
-  StaticJsonDocument<JSON_SETTINGS_SIZE> json;
-
   updateSettings();
-
-  settings->toJsonDoc(json);
-  settings->saveSettings(json);
+  settings->saveSettings();
 }
 
 JsonArray getActiveLedsToWeb(JsonDocument &json) {

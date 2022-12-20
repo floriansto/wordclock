@@ -86,7 +86,7 @@ void Settings::toJsonDoc(JsonDocument &json)
   json["utcTimeOffset"] = settings["utcTimeOffset"];
 }
 
-void Settings::saveSettings(JsonDocument &json) {
+void Settings::saveSettings() {
   File file = LittleFS.open("/settings.json", "w");
 
   if (!file) {
