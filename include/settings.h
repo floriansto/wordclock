@@ -22,7 +22,7 @@ public:
   void setBrightness(int brightness);
   int getBrightness();
   void loadSettings();
-  void saveSettings(JsonDocument &json);
+  void saveSettings();
   void toJsonDoc(JsonDocument &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
