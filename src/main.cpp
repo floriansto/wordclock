@@ -200,7 +200,7 @@ void notifyClients() {
   settings->saveSettings();
 }
 
-JsonArray getActiveLedsToWeb(JsonDocument &json) {
+void getActiveLedsToWeb(JsonObject &json) {
   String jsonString;
   u_int16_t activeLeds[ROW_PIXELS];
   memset(activeLeds, 0, sizeof(activeLeds));
@@ -212,24 +212,23 @@ JsonArray getActiveLedsToWeb(JsonDocument &json) {
   for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
     array.add(activeLeds[ROW_PIXELS - 1 - i]);
   }
-
-  return array;
 }
 
-void getTimeToWeb(JsonDocument &json) {
+void getTimeToWeb(JsonObject &json) {
   json["wordTime"] = getWordTime();
   getActiveLedsToWeb(json);
 }
 
-void getSettingsToWeb(JsonDocument &json) { settings->toJsonDoc(json); }
+void getSettingsToWeb(JsonObject &json) { settings->toJsonDoc(json); }
 
-void sendJson(void function(JsonDocument &json)) {
+void sendJson(void function(JsonObject &json)) {
   StaticJsonDocument<JSON_SETTINGS_SIZE> json;
+  JsonObject obj = json.to<JsonObject>();
   String str;
 
-  (*function)(json);
+  (*function)(obj);
 
-  if (serializeJson(json, str) == 0) {
+  if (serializeJson(obj, str) == 0) {
     Serial.println("Failed to serialize json");
     return;
   }
@@ -266,42 +265,22 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       sendJson(getTimeToWeb);
     }
     if (message.indexOf("switchBackgroundColor") == 0) {
-      int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
-      settings->setUseBackgroundColor(quaterPast > 0);
-      notifyClients();
-      sendJson(getTimeToWeb);
-    }
-    if (message.indexOf("mainColor") == 0) {
-      String mainColorStr = message.substring(message.indexOf("=") + 1);
-      char colorChar[9];
-      mainColorStr.toCharArray(colorChar, 9);
-      int mainColor = strtol(colorChar, 0, 16);
-
-      uint8_t r = (mainColor & 0xFF0000) >> 16;
-      uint8_t g = (mainColor & 0x00FF00) >> 8;
-      uint8_t b = mainColor & 0x0000FF;
-      settings->setMainColor(COLOR{r, g, b});
+      int useBackgroundColor =
+          message.substring(message.indexOf("=") + 1).toInt();
+      settings->setUseBackgroundColor(useBackgroundColor > 0);
       notifyClients();
       sendJson(getTimeToWeb);
     }
     if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
-      char colorChar[9];
-      backgroundColorStr.toCharArray(colorChar, 9);
-      int backgroundColor = strtol(colorChar, 0, 16);
-
-      uint8_t r = (backgroundColor & 0xFF0000) >> 16;
-      uint8_t g = (backgroundColor & 0x00FF00) >> 8;
-      uint8_t b = backgroundColor & 0x0000FF;
-      settings->setBackgroundColor(COLOR{r, g, b});
+      settings->setColor(backgroundColorStr, "backgroundColor");
       notifyClients();
       sendJson(getTimeToWeb);
     }
     if (message.indexOf("utcTimeOffset") == 0) {
       int offset = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUtcHourOffset(offset);
-      if (adjustSummertime(&rtc, &timeClient, offset,
-                           wifiConnected) != true) {
+      if (adjustSummertime(&rtc, &timeClient, offset, wifiConnected) != true) {
         error = Error::SUMMERTIME_ERROR;
       }
       notifyClients();
@@ -309,7 +288,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
     if (message.indexOf("wordConfig") == 0) {
       String wordConfig = message.substring(message.indexOf("=") + 1);
-      Serial.println(wordConfig);
+      settings->setWordConfig(wordConfig);
     }
 
     if (strcmp((char *)data, "getValues") == 0) {
@@ -437,7 +416,7 @@ void setup() {
   TIME time = getTime(&rtc, &timeClient, wifiConnected);
   if (time.valid == true &&
       timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
-    showTime(settings->getMainColor(), settings->getBackgroundColor());
+    showTime(settings->getTimeColor(), settings->getBackgroundColor());
   }
 
   WiFi.mode(WIFI_STA);
@@ -527,7 +506,7 @@ void loop() {
   }
 
   if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
-    showTime(settings->getMainColor(), settings->getBackgroundColor());
+    showTime(settings->getTimeColor(), settings->getBackgroundColor());
     lastTimeUpdate = millis();
   }
 
