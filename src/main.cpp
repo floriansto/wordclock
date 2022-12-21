@@ -206,6 +206,7 @@ void getActiveLedsToWeb(JsonObject &json) {
   memset(activeLeds, 0, sizeof(activeLeds));
 
   getActiveLeds(activeLeds);
+  json["timeColor"] = settings->getTimeColorJson();
 
   JsonArray array = json.createNestedArray("activeLeds");
 
@@ -289,6 +290,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (message.indexOf("wordConfig") == 0) {
       String wordConfig = message.substring(message.indexOf("=") + 1);
       settings->setWordConfig(wordConfig);
+      notifyClients();
+      sendJson(getTimeToWeb);
     }
 
     if (strcmp((char *)data, "getValues") == 0) {
