@@ -90,6 +90,7 @@ function onMessage(event) {
   }
   var myObj = JSON.parse(event.data);
   var keys = Object.keys(myObj);
+  var timeColor = "#FF0000";
 
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
@@ -108,12 +109,21 @@ function onMessage(event) {
       }
     }
 
+    if (key == "timeColor") {
+      var color = myObj[key];
+      timeColor = convertRGBtoHex(color[0], color[1], color[2]);
+    }
+
     if (key === "wordTime") {
       document.getElementById(key).innerHTML = myObj[key];
-    } else if (key === "activeLeds") {
+    }
 
+    if (key === "wordConfig") {
+      console.log("Restore word config");
+    }
+
+    if (key === "activeLeds") {
       var table = document.getElementById("preview");
-      var mainColor = "#f5c211";
       var backgroundColor = document.getElementById("backgroundColor").value;
       var useBackgroundColor = document.getElementById("switchBackgroundColor").checked;
 
@@ -126,7 +136,7 @@ function onMessage(event) {
         var j = 0;
         for (let cell of row.cells) {
           if (leds & (1 << j))
-            cell.style.backgroundColor = mainColor;
+            cell.style.backgroundColor = timeColor;
           else
             cell.style.backgroundColor = backgroundColor;
           ++j;

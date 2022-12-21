@@ -107,6 +107,10 @@ COLOR Settings::getTimeColor() {
   return getColor(settings["wordConfig"][0]["color"]);
 }
 
+JsonVariant Settings::getTimeColorJson() {
+  return settings["wordConfig"][0]["color"];
+}
+
 void Settings::toJsonDoc(JsonObject &json) {
   json = settings.as<JsonObject>();
   return;

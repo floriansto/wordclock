@@ -30,6 +30,7 @@ public:
   COLOR getBackgroundColor();
   void setWordConfig(String &wordConfig);
   COLOR getTimeColor();
+  JsonVariant getTimeColorJson();
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
