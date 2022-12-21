@@ -1,7 +1,7 @@
 #ifndef __SETTINGS_H__
 #define __SETTINGS_H__
 
-#define JSON_SETTINGS_SIZE 512
+#define JSON_SETTINGS_SIZE 2048
 typedef struct _color {
   uint8_t r;
   uint8_t g;
@@ -23,13 +23,13 @@ public:
   int getBrightness();
   void loadSettings();
   void saveSettings();
-  void toJsonDoc(JsonDocument &json);
+  void toJsonDoc(JsonObject &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
-  COLOR getMainColor();
-  void setMainColor(COLOR color);
+  void setColor(String &rgbColor, const char *key);
   COLOR getBackgroundColor();
-  void setBackgroundColor(COLOR color);
+  void setWordConfig(String &wordConfig);
+  COLOR getTimeColor();
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
