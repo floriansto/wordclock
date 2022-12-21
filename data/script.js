@@ -53,9 +53,18 @@ function processCheckbox(element, id) {
   websocket.send(element.id + "=" + boolState);
 }
 
+function hexToColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  console.log([r, g, b]);
+  return [r, g, b];
+}
+
 function processColorPicker(element) {
   var colorValue = document.getElementById(element.id).value;
-  websocket.send(element.id + "=" + colorValue.replace("#", ""));
+  var rgb = hexToColor(colorValue);
+  websocket.send(element.id + "=" + JSON.stringify(rgb));
 }
 
 function processTextInput(element, event) {
@@ -75,6 +84,10 @@ function convertRGBtoHex(red, green, blue) {
 }
 
 function onMessage(event) {
+  if (event.data === "null") {
+    console.log("Received data is null");
+    return
+  }
   var myObj = JSON.parse(event.data);
   var keys = Object.keys(myObj);
 
@@ -86,14 +99,10 @@ function onMessage(event) {
     elem = document.getElementById(key);
     if (elem != null) {
       if (elem.getAttribute("type") === "checkbox") {
-        if (myObj[key] === 1) {
-          elem.checked = true;
-        } else {
-          elem.checked = false;
-        }
+        elem.checked = myObj[key];
       } else if (elem.getAttribute("type") === "color") {
         var color = myObj[key];
-        document.getElementById(key).value = convertRGBtoHex(color.r, color.g, color.b);
+        document.getElementById(key).value = convertRGBtoHex(color[0], color[1], color[2]);
       } else {
         document.getElementById(key).value = myObj[key];
       }
@@ -230,7 +239,7 @@ function saveWords() {
           jsonContent["words"] = content.value;
           break;
         case "color":
-          jsonContent["color"] = content.value.replace("#", "");
+          jsonContent["color"] = hexToColor(content.value);
           break;
         case "checkbox":
           jsonContent["enable"] = content.checked;
