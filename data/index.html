@@ -44,10 +44,10 @@
 
     <p>Brightness: <span id="brightnessSliderDisplay"></span>%</p>
     <input type="range" min="0" max="100" value="50" class="slider" id="brightnessSlider"
-      onchange="updateSliderBrightness(this)">
+      onchange="updateSliderBrightness(this)" align="center">
 
-    <h4>Clock Settings</h4>
-    <table>
+    <h4 align="center">Clock Settings</h4>
+    <table align="center">
       <tr>
         <td>Use dialect</td>
         <td><input id="switchDialect" type="checkbox" onclick="processCheckbox(this)"></td>
@@ -74,7 +74,7 @@
       </tr>
     </table>
 
-    <h4>Display Settings</h4>
+    <h4 align="center">Display Settings</h4>
     <table class="word_table" id="word-config" align="center">
       <tr class="word_tr">
         <td class="word_td">
@@ -111,7 +111,7 @@
       <button type="button" id="save-words" onclick="saveWords()">Save</button>
     </div>
 
-    <h4>Preview</h4>
+    <h4 align="center">Preview</h4>
     <table id="preview" class="table_preview" align="center">
     </table>
 
