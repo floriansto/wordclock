@@ -57,7 +57,6 @@ function hexToColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  console.log([r, g, b]);
   return [r, g, b];
 }
 
@@ -119,7 +118,69 @@ function onMessage(event) {
     }
 
     if (key === "wordConfig") {
-      console.log("Restore word config");
+      var table = document.getElementById("word-config");
+
+      var counter = 0;
+      for (let row of table.rows) {
+        if (counter < 2) {
+          ++counter;
+          continue
+        }
+        console.log("Remove row");
+        row.remove();
+        ++counter;
+      }
+
+      counter = 0
+      for (let i of myObj[key]) {
+        if (counter === 0) {
+          ++counter;
+          continue;
+        }
+        addRow("word-config");
+        console.log("Add Row");
+        console.log(i);
+
+        let row = table.rows[counter + 1]
+        for (let cell of row.cells) {
+          let content = cell.childNodes[0];
+
+          if (content === undefined)
+            continue
+
+          switch (content.type) {
+            case "text":
+              content.value = i["words"];
+              break;
+            case "color":
+              content.value = convertRGBtoHex(i["color"][0], i["color"][1], i["color"][2]);
+              break;
+            case "checkbox":
+              content.checked = i["enable"];
+              break;
+            case "select-one":
+              for (var j = 0; j < content.options.length; ++j) {
+                if (content.options[j].text === i["when"]) {
+                    content.selectedIndex = j;
+                    break;
+                }
+              }
+              break;
+            case "date":
+              if (!i["date"]["valid"]) {
+                break;
+              }
+              var year = new Date().getFullYear();
+              var date = new Date(year, i["date"]["month"] - 1, i["date"]["day"] + 1);
+              content.valueAsDate = date;
+              break;
+            default:
+              break;
+
+          }
+        }
+        ++counter;
+      }
     }
 
     if (key === "activeLeds") {
@@ -184,19 +245,19 @@ function addRow(tableID) {
 
     switch (i) {
       case 0:
-        newcell.innerHTML = '<td class="word_td"><input type="checkbox""></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="checkbox"></td>';
         break;
       case 1:
-        newcell.innerHTML = '<td class="word_td"><input type="text""></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="text"></td>';
         break;
       case 2:
-        newcell.innerHTML = '<td class="word_td"><input type="color""></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="color"></td>';
         break;
       case 3:
         newcell.innerHTML = '<td class="word_td"><select name="When"><option value="always">Always</option><option value="date">Date</option></select></td>';
         break;
       case 4:
-        newcell.innerHTML = '<td class="word_td"><input type="date""></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="date"></td>';
         break;
       case 5:
         newcell.innerHTML = '<td class="word_td"><button type="button">Delete</button></td>';
@@ -275,8 +336,6 @@ function saveWords() {
     data.push(jsonContent);
     ++i;
   }
-  console.log("Save word config");
-  console.log(data);
   websocket.send("wordConfig=" + JSON.stringify(data));
 }
 
