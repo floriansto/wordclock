@@ -22,9 +22,29 @@ def rgbToXyz(rgb_in):
   """
   rgb = [i / 255 for i in rgb_in]
 
-  x = 0.4124564 * rgb[0] + 0.3575761 * rgb[1] + 0.1804375 * rgb[2]
-  y = 0.2126729 * rgb[0] + 0.7151522 * rgb[1] + 0.0721750 * rgb[2]
-  z = 0.0193339 * rgb[0] + 0.1191920 * rgb[1] + 0.9503041 * rgb[2]
+  r = rgb[0]
+  g = rgb[1]
+  b = rgb[2]
+
+  # Convert sRGB values to linear RGB values
+  if r > 0.04045:
+      r = ((r + 0.055) / 1.055) ** 2.4
+  else:
+      r = r / 12.92
+  if g > 0.04045:
+      g = ((g + 0.055) / 1.055) ** 2.4
+  else:
+      g = g / 12.92
+  if b > 0.04045:
+      b = ((b + 0.055) / 1.055) ** 2.4
+  else:
+      b = b / 12.92
+
+  # Convert linear RGB values to XYZ values
+  x = r * 0.4124 + g * 0.3576 + b * 0.1805
+  y = r * 0.2126 + g * 0.7152 + b * 0.0722
+  z = r * 0.0193 + g * 0.1192 + b * 0.9505
+
   return [x, y, z]
 
 
@@ -36,10 +56,33 @@ def xyzToRgb(xyz):
   g = xyz[0] * -0.9689 + xyz[1] *  1.8758 + xyz[2] *  0.0415
   b = xyz[0] *  0.0557 + xyz[1] * -0.2040 + xyz[2] *  1.0570
 
-  r *= 255
-  g *= 255
-  b *= 255
-  return [round(r), round(g), round(b)]
+  r = r if r > 0 else 0
+  g = g if g > 0 else 0
+  b = b if b > 0 else 0
+
+  r = 1 if r > 1 else r
+  g = 1 if g > 1 else g
+  b = 1 if b > 1 else b
+
+  if r > 0.0031308:
+    r = 1.055 * ( r ** ( 1 / 2.4 ) ) - 0.055
+  else:
+    r = 12.92 * r
+
+  if g > 0.0031308:
+    g = 1.055 * ( g ** ( 1 / 2.4 ) ) - 0.055
+  else:
+    g = 12.92 * g
+
+  if b > 0.0031308:
+    b = 1.055 * ( b ** ( 1 / 2.4 ) ) - 0.055
+  else:
+    b = 12.92 * b
+
+  r = round(r * 255)
+  g = round(g * 255)
+  b = round(b * 255)
+  return [r, g, b]
 
 
 def getBounds():
@@ -125,6 +168,8 @@ def labToLch(lab):
   L = lab[0]
   c = math.sqrt(math.pow(lab[1], 2) + math.pow(lab[2], 2))
   h = math.atan2(lab[2], lab[1])
+  if h < 0:
+    h += (2 * math.pi)
   return [L, c, h]
 
 
@@ -154,6 +199,40 @@ def print_lch(lch):
   print(f"l: {lch[0]} c: {lch[1]} h: {lch[2]}")
 
 
+def rgbToLch(rgb):
+  return labToLch(xyzToLab(rgbToXyz(rgb)))
+
+def lchToRgb(lch):
+  return xyzToRgb(labToXyz(lchToLab(lch)))
+
+def lchInterpolate(color1, color2, t):
+  # Interpolate L*, C, and h values separately
+  l1, c1, h1 = color1
+  l2, c2, h2 = color2
+  l = l1 + t * (l2 - l1)
+  c = c1 + t * (c2 - c1)
+
+  h1 = h1 * 180 / math.pi
+  h2 = h2 * 180 / math.pi
+
+  # Handle hue interpolation when crossing the 0-360 boundary
+  if abs(h2 - h1) <= 180:
+    h = h1 + t * (h2 - h1)
+  elif h2 > h1:
+    h = h1 + t * ((h2 - h1) - 360)
+    if h < 0:
+      h += 360
+  else:
+    h = h1 + t * ((h2 - h1) + 360)
+    if h >= 360:
+      h -= 360
+
+  h *= (math.pi / 180)
+
+  # Convert back to RGB using the interpolated L*, C, and h values
+  print((l, c, h))
+  return lchToRgb((l, c, h))
+
 def main():
   rgb = [255, 0, 0]
   print_rgb(rgb)
@@ -166,6 +245,8 @@ def main():
   lch = labToLch(lab)
   print_lab(lchToLab(lch))
   print_lch(lch)
+  print(rgbToLch(rgb))
+  print(lchToRgb(lch))
 
   print("\n============================\n")
 
@@ -181,6 +262,14 @@ def main():
   print_lab(lchToLab(lch))
   print_lch(lch)
 
+  red = [255, 0, 0]
+  blue = [0, 0, 255]
+
+  for i in range(11):
+    t = i/10
+    col_int = lchInterpolate(rgbToLch(red), rgbToLch(blue), t)
+    print(t)
+    print(col_int)
 
 if __name__ == "__main__":
   main()
