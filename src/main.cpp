@@ -492,7 +492,16 @@ u_int32_t updateTime = 1 * 1000;
 
 bool showCaptivePortal = true;
 
+LCH color1 = rgb_to_lch({255, 0, 0});
+LCH color2 = rgb_to_lch({0, 0, 255});
+
+double t_start = 2000.0;
+double t_end = 4000.0;
+double curr = 0.0;
+double step = 10.0;
+
 void loop() {
+#if 0
   error = Error::OK;
 
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
@@ -560,4 +569,38 @@ void loop() {
   // matrix.show();
 
   delay(10);
+#endif
+
+  if (curr < t_start) {
+    curr += step;
+    delay(step);
+    return;
+  }
+
+  if (curr > t_end) {
+    LCH tmp = color1;
+    color1 = color2;
+    color2 = tmp;
+    curr = 0.0;
+    return;
+  }
+
+  double t = (curr - t_start) / (t_end - t_start);
+  RGB c = lch_interp(color1, color2, t);
+
+  //Serial.print("r: ");
+  //Serial.print(c.r);
+  //Serial.print(" g: ");
+  //Serial.print(c.g);
+  //Serial.print(" b: ");
+  //Serial.println(c.b);
+
+  matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS, matrix.Color(c.r, c.g, c.b));
+  matrix.show();
+
+  curr += step;
+
+  //if (step - end + start > 0) {
+    //delay(step - end + start);
+  //}
 }
