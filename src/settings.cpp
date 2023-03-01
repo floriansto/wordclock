@@ -84,7 +84,7 @@ void Settings::setWordConfig(String &wordConfig) {
   Serial.println(settings.memoryUsage());
 }
 
-COLOR getColor(JsonArray color) { return COLOR{color[0], color[1], color[2]}; }
+RGB getColor(JsonArray color) { return RGB{color[0], color[1], color[2]}; }
 
 void Settings::setColor(String &rgbColor, const char *key) {
   StaticJsonDocument<64> config;
@@ -99,11 +99,11 @@ void Settings::setColor(String &rgbColor, const char *key) {
   settings[key].set(config.as<JsonArray>());
 }
 
-COLOR Settings::getBackgroundColor() {
+RGB Settings::getBackgroundColor() {
   return getColor(settings["backgroundColor"]);
 }
 
-COLOR Settings::getTimeColor() {
+RGB Settings::getTimeColor() {
   return getColor(settings["wordConfig"][0]["color"]);
 }
 

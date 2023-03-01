@@ -24,9 +24,9 @@ public:
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   void setColor(String &rgbColor, const char *key);
-  COLOR getBackgroundColor();
+  RGB getBackgroundColor();
   void setWordConfig(String &wordConfig);
-  COLOR getTimeColor();
+  RGB getTimeColor();
   JsonVariant getTimeColorJson();
 
 private:

@@ -35,7 +35,7 @@ void Led::interpolateColors() {
   //Serial.println(this->interpol_param);
 }
 
-void Led::setTargetColor(COLOR color) {
+void Led::setTargetColor(RGB color) {
   if (this->target.r == color.r && this->target.g == color.g &&
       this->target.b == color.b) {
     return;
@@ -56,10 +56,10 @@ bool Led::raiseInterplateParam(u_int16_t value) {
   return true;
 }
 
-COLOR Led::getColor() {
+RGB Led::getColor() {
   return this->current;
 }
 
-COLOR Led::getTargetColor() {
+RGB Led::getTargetColor() {
   return this->target;
 }

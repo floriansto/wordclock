@@ -79,7 +79,7 @@ void getWordCoords(int *buffer, String wordKey, String langKey) {
 
 void interpolateTime() {
   Led *led;
-  COLOR color;
+  RGB color;
 
    matrix.setBrightness(settings->getBrightness() / 100.0 *
                         calcBrightnessScale(numActiveLeds));
@@ -99,7 +99,7 @@ void interpolateTime() {
   matrix.show();
 }
 
-void showTime(COLOR color, COLOR background) {
+void showTime(RGB color, RGB background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   JsonArray list;
@@ -147,7 +147,7 @@ void showTime(COLOR color, COLOR background) {
       if (settings->getUseBackgroundColor() == true) {
         ledMatrix[i][j].setTargetColor(background);
       } else {
-        ledMatrix[i][j].setTargetColor(COLOR{0, 0, 0});
+        ledMatrix[i][j].setTargetColor(RGB{0, 0, 0});
       }
     }
   }
