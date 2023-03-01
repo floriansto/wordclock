@@ -1,12 +1,9 @@
 #ifndef __SETTINGS_H__
 #define __SETTINGS_H__
 
+#include "../include/color.h"
+
 #define JSON_SETTINGS_SIZE 2048
-typedef struct _color {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-} COLOR;
 
 class Settings {
 public:

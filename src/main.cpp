@@ -19,7 +19,9 @@
 #include <math.h>
 #include <timeprocessor.h>
 
+#include "../include/color.h"
 #include "../include/hw_settings.h"
+#include "../include/led.h"
 #include "../include/main.h"
 #include "../include/settings.h"
 #include "../include/timeUtils.h"
@@ -53,6 +55,8 @@ Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
 
+Led ledMatrix[ROW_PIXELS][COL_PIXELS];
+
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
   if (maxCurrent < maxCurrentAll) {
@@ -73,6 +77,28 @@ void getWordCoords(int *buffer, String wordKey, String langKey) {
   }
 }
 
+void interpolateTime() {
+  Led *led;
+  COLOR color;
+
+   matrix.setBrightness(settings->getBrightness() / 100.0 *
+                        calcBrightnessScale(numActiveLeds));
+  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
+    for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
+      led = &ledMatrix[i][j];
+      if (led->raiseInterplateParam(10) == false) {
+        continue;
+      }
+      led->interpolateColors();
+      color = led->getColor();
+      // Serial.println(color.r);
+      matrix.fillRect(j, ROW_PIXELS - i - 1, 1, 1,
+                      matrix.Color(color.r, color.g, color.b));
+    }
+  }
+  matrix.show();
+}
+
 void showTime(COLOR color, COLOR background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
@@ -80,18 +106,19 @@ void showTime(COLOR color, COLOR background) {
   int buffer[4]{0, 0, 0, 0};
   String langKey;
   String wordKey;
+  bool words[ROW_PIXELS][COL_PIXELS];
 
-  matrix.fillScreen(0);
+  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
+    for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
+      words[i][j] = false;
+    }
+  }
 
   if (settings->getUseDialect())
     langKey = "de-Dialect";
   else
     langKey = "de-DE";
 
-  if (settings->getUseBackgroundColor() == true) {
-    matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS,
-                    matrix.Color(background.r, background.g, background.b));
-  }
   numActiveLeds = 0;
   for (int i = 0; i < stack->getSize(); ++i) {
     if (!stack->get(&elem, i)) {
@@ -102,19 +129,32 @@ void showTime(COLOR color, COLOR background) {
     json_key_from_state(elem.state);
     getWordCoords(buffer, wordKey, langKey);
 
-    matrix.fillRect(buffer[0], buffer[1], buffer[2], buffer[3],
-                    matrix.Color(color.r, color.g, color.b));
-
+    for (u_int8_t j = 0; j < buffer[2]; ++j) {
+      for (u_int8_t k = 0; k < buffer[3]; ++k) {
+        ledMatrix[ROW_PIXELS - 1 - buffer[1] - k][j + buffer[0]].setTargetColor(
+            color);
+        words[ROW_PIXELS - 1 - buffer[1] - k][j + buffer[0]] = true;
+      }
+    }
     numActiveLeds += (buffer[2] * buffer[3]);
+  }
+
+  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
+    for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
+      if (words[i][j]) {
+        continue;
+      }
+      if (settings->getUseBackgroundColor() == true) {
+        ledMatrix[i][j].setTargetColor(background);
+      } else {
+        ledMatrix[i][j].setTargetColor(COLOR{0, 0, 0});
+      }
+    }
   }
 
   if (settings->getUseBackgroundColor() == true) {
     numActiveLeds = NUMPIXELS;
   }
-
-  matrix.setBrightness(settings->getBrightness() / 100.0 *
-                       calcBrightnessScale(numActiveLeds));
-  matrix.show();
 }
 
 void updateSettings() {
@@ -198,6 +238,7 @@ String getWordTime() {
 void notifyClients() {
   updateSettings();
   settings->saveSettings();
+  // showTime(settings->getTimeColor(), settings->getBackgroundColor());
 }
 
 void getActiveLedsToWeb(JsonObject &json) {
@@ -512,6 +553,11 @@ void loop() {
     showTime(settings->getTimeColor(), settings->getBackgroundColor());
     lastTimeUpdate = millis();
   }
+
+  interpolateTime();
+  // matrix.setBrightness(128);
+  // matrix.fillRect(0, ROW_PIXELS-1, 1, 1, matrix.Color(255, 0, 0));
+  // matrix.show();
 
   delay(10);
 }
