@@ -29,6 +29,8 @@
 #define DEBUG 0
 
 CRGB leds[NUMPIXELS];
+CRGB oldColor[NUMPIXELS];
+CRGB newColor[NUMPIXELS];
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -498,8 +500,8 @@ double curr = 0.0;
 double step = 10.0;
 
 void loop() {
-#if 0
-  error = Error::OK;
+
+  unsigned long start = millis();
 
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
@@ -565,46 +567,11 @@ void loop() {
   // matrix.fillRect(0, ROW_PIXELS-1, 1, 1, matrix.Color(255, 0, 0));
   // matrix.show();
 
-  delay(10);
-#endif
-
-  unsigned long start = millis();
-
-  if (curr < t_start) {
-    curr += step;
-    delay(step);
-    return;
-  }
-
-  if (curr > t_end) {
-    LCH tmp = color1;
-    color1 = color2;
-    color2 = tmp;
-    curr = 0.0;
-    return;
-  }
-
-  double t = (curr - t_start) / (t_end - t_start);
-  u_int32_t c = lch_interp(color1, color2, t);
-
-  //Serial.print("r: ");
-  //Serial.print(c.r);
-  //Serial.print(" g: ");
-  //Serial.print(c.g);
-  //Serial.print(" b: ");
-  //Serial.println(c.b);
-
-  for (int i = 0; i < NUMPIXELS; ++i) {
-    leds[i] = CRGB{c};
-  }
-  FastLED.setBrightness(64);
-  FastLED.show();
-
-  curr += step;
-
   unsigned long end = millis();
 
-  if (step - end + start > 0) {
-    delay(step - end + start);
+  if (cycleTimeMs - end + start > 0) {
+    delay(cycleTimeMs - end + start);
+  } else {
+    error = Error::CYCLE_TIME_VIOLATION;
   }
 }
