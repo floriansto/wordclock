@@ -178,10 +178,13 @@ u_int32_t rgb_interp(u_int32_t c1, u_int32_t c2, double t) {
   return ((int) r) << 16 | ((int) g) << 8 | ((int) b);
 }
 
-u_int32_t rgbToHex(u_int8_t r, u_int8_t g, u_int8_t b) {
-  return r << 16 | g << 8 | b;
+u_int32_t rgbToHex(COLOR_RGB color) {
+  return color.r << 16 | color.g << 8 | color.b;
 }
 
 COLOR_RGB hexToRgb(u_int32_t hex) {
-  return COLOR_RGB{hex >> 16, (hex & 0x00FF00) >> 8, hex & 0xFF};
+  u_int8_t r = (hex >> 16) & 0xFF;
+  u_int8_t g = (hex >> 8) & 0xFF;
+  u_int8_t b = (hex >> 0) & 0xFF;
+  return COLOR_RGB{r, g, b};
 }

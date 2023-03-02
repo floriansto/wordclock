@@ -100,7 +100,10 @@ void Settings::setColor(String &rgbColor, const char *key) {
 }
 
 COLOR_RGB Settings::getBackgroundColor() {
-  return getColor(settings["backgroundColor"]);
+  if (this->getUseBackgroundColor()) {
+    return getColor(settings["backgroundColor"]);
+  }
+  return COLOR_RGB{0, 0, 0};
 }
 
 COLOR_RGB Settings::getTimeColor() {
@@ -147,4 +150,11 @@ void Settings::loadSettings() {
     return;
   }
   Serial.println("Loaded settings");
+}
+
+String Settings::getLangKey() {
+  if (this->getUseDialect()) {
+    return "de-Dialect";
+  }
+  return "de-DE";
 }

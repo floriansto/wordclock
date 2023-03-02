@@ -28,6 +28,7 @@ public:
   void setWordConfig(String &wordConfig);
   COLOR_RGB getTimeColor();
   JsonVariant getTimeColorJson();
+  String getLangKey();
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;

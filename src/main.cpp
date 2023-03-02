@@ -31,6 +31,7 @@
 CRGB leds[NUMPIXELS];
 CRGB oldColor[NUMPIXELS];
 CRGB newColor[NUMPIXELS];
+double interpolationTime[NUMPIXELS];
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -80,8 +81,8 @@ void interpolateTime() {
   Led *led;
   COLOR_RGB color;
 
-   matrix.setBrightness(settings->getBrightness() / 100.0 *
-                        calcBrightnessScale(numActiveLeds));
+  matrix.setBrightness(settings->getBrightness() / 100.0 *
+                       calcBrightnessScale(numActiveLeds));
   for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
     for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
       led = &ledMatrix[i][j];
@@ -97,7 +98,84 @@ void interpolateTime() {
   }
   matrix.show();
 }
+#endif
 
+/**
+ * Set new target and start led colors for a given time
+*/
+void setLeds() {
+  u_int32_t timeColor = rgbToHex(settings->getTimeColor());
+  u_int32_t background = rgbToHex(settings->getBackgroundColor());
+  Timestack *stack = timeProcessor->getStack();
+  TIMESTACK elem;
+  String wordKey;
+  String langKey;
+  JsonArray wordPixels;
+  u_int16_t led;
+  CRGB timeColorRgb = timeColor;
+  CRGB backgroundRgb = background;
+  bool timeLeds[NUMPIXELS];
+
+  langKey = settings->getLangKey();
+
+  for (u_int16_t i = 0; i < stack->getSize(); ++i) {
+    /* Get the word key for each stack element */
+    if (!stack->get(&elem, i)) {
+      error = Error::TIMESTACK_GET_ELEM_FAILED;
+      return;
+    }
+    json_key_from_state(elem.state);
+
+    /* Get the active pixels for the current word */
+    wordPixels = words[wordKey][langKey]["pixels"].as<JsonArray>();
+    /* Set the color for each active pixel */
+    for (JsonVariant pixel : wordPixels) {
+      led = pixel.as<u_int16_t>();
+      timeLeds[led] = true;
+      if (newColor[led] == timeColorRgb) {
+        oldColor[led] = leds[led];
+        interpolationTime[led] = 0.0;
+      }
+      newColor[led] = timeColor;
+    }
+  }
+
+  /* Exit if background color is disabled */
+  if (background == 0x000000) {
+    return;
+  }
+
+  Serial.println("Background color is enabled");
+
+  /* Fill all non time relevant leds with the background color */
+  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
+    if (timeLeds[i]) {
+      continue;
+    }
+    if (leds[i] == backgroundRgb) {
+      continue;
+    }
+    newColor[i] = backgroundRgb;
+    oldColor[i] = leds[i];
+    interpolationTime[i] = 0.0;
+  }
+}
+
+void interpolateLeds() {
+  u_int16_t interpolationDuration = 8000;
+  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
+    if (interpolationTime[i] > interpolationDuration) {
+      continue;
+    }
+    LCH color1 = rgb_to_lch(rgbToHex(oldColor[i]));
+    LCH color2 = rgb_to_lch(rgbToHex(newColor[i]));
+    u_int32_t c = lch_interp(color1, color2, interpolationTime[i]);
+    leds[i] = c;
+    interpolationTime[i] += cycleTimeMs;
+  }
+}
+
+#if 0
 void showTime(COLOR_RGB color, COLOR_RGB background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
@@ -125,7 +203,7 @@ void showTime(COLOR_RGB color, COLOR_RGB background) {
       return;
     }
 
-    json_key_from_state(elem.state);
+    json_key_from_state(elem.state, wordKey);
     getWordCoords(buffer, wordKey, langKey);
 
     for (u_int8_t j = 0; j < buffer[2]; ++j) {
@@ -439,6 +517,9 @@ void setup() {
 
   /* Setup ledsrip */
   FastLED.addLeds<NEOPIXEL, PIN>(leds, NUMPIXELS);
+  memset(leds, 0, sizeof(leds));
+  memset(oldColor, 0, sizeof(oldColor));
+  memset(newColor, 0, sizeof(newColor));
   FastLED.setBrightness(64);
   FastLED.clear();
   FastLED.show();
@@ -531,6 +612,8 @@ void loop() {
       error = Error::TIME_TO_WORD_CONVERSION;
       return;
     }
+
+    setLeds();
   }
 
   /* Check if the summertime needs to be adjusted and if so, do so */
@@ -551,6 +634,9 @@ void loop() {
     }
     lastRtcSync = millis();
   }
+
+  interpolateLeds();
+  FastLED.show();
 
   unsigned long end = millis();
 
