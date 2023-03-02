@@ -433,18 +433,24 @@ void loadWordConfig() {
 }
 
 void setup() {
+  /* Hardware setup */
   Serial.begin(9600);
-
   Wire.begin(D2, D1);
 
+  /* Setup ledsrip */
   FastLED.addLeds<NEOPIXEL, PIN>(leds, NUMPIXELS);
+  FastLED.setBrightness(64);
+  FastLED.clear();
+  FastLED.show();
 
+  /* Initialize filesystem */
   initFS();
 
   settings->loadSettings();
   loadWordConfig();
   updateSettings();
 
+  /* Start connection to rtc if possible */
   rtc.found = true;
   rtc.valid = true;
   if (!rtc.rtc.begin()) {
@@ -452,31 +458,18 @@ void setup() {
     rtc.found = false;
   }
 
+  /* If the rtc lost its power, mark the time as invalid */
   if (rtc.found == true && rtc.rtc.lostPower()) {
     rtc.valid = false;
   }
 
-  TIME time = getTime(&rtc, &timeClient, wifiConnected);
-  if (time.valid == true &&
-      timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
-    // showTime(settings->getTimeColor(), settings->getBackgroundColor());
-  }
-
+  /* Initialize wifi connection or enable the hotspot */
   WiFi.mode(WIFI_STA);
   wifiManager.setConfigPortalTimeout(120);
   if (wifiManager.autoConnect("Wordclock")) {
     Serial.println("Connected to wifi :)");
-    wifiConnected = true;
   } else {
     Serial.println("Configportal at 192.168.4.1 running");
-  }
-
-  if (wifiConnected == true) {
-    initWebFunctions();
-    if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
-                         wifiConnected) != true) {
-      error = Error::SUMMERTIME_ERROR;
-    }
   }
 }
 
@@ -506,6 +499,7 @@ void loop() {
       leds[i] = 0xFF0000;
     }
     FastLED.show();
+    Serial.println("Error detected");
     return;
   }
 
@@ -560,9 +554,7 @@ void loop() {
 
   unsigned long end = millis();
 
-  if (cycleTimeMs - end + start > 0) {
+  if (cycleTimeMs > end - start) {
     delay(cycleTimeMs - end + start);
-  } else {
-    error = Error::CYCLE_TIME_VIOLATION;
   }
 }
