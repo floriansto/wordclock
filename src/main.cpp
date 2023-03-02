@@ -503,6 +503,15 @@ void loop() {
 
   unsigned long start = millis();
 
+  /* Display all red leds in red in case of an error. */
+  if (error != Error::OK) {
+    for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
+      leds[i] = 0xFF0000;
+    }
+    FastLED.show();
+    return;
+  }
+
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
   }
