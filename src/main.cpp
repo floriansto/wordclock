@@ -53,7 +53,7 @@ Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
 
-//Led ledMatrix[ROW_PIXELS][COL_PIXELS];
+// Led ledMatrix[ROW_PIXELS][COL_PIXELS];
 
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
@@ -163,7 +163,7 @@ void updateSettings() {
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
   FastLED.setBrightness(settings->getBrightness() / 100.0 *
-                       calcBrightnessScale(numActiveLeds));
+                        calcBrightnessScale(numActiveLeds));
 }
 
 void getActiveLeds(u_int16_t *dest) {
@@ -459,7 +459,7 @@ void setup() {
   TIME time = getTime(&rtc, &timeClient, wifiConnected);
   if (time.valid == true &&
       timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
-    //showTime(settings->getTimeColor(), settings->getBackgroundColor());
+    // showTime(settings->getTimeColor(), settings->getBackgroundColor());
   }
 
   WiFi.mode(WIFI_STA);
@@ -480,27 +480,24 @@ void setup() {
   }
 }
 
-unsigned long lastRun = 0;
-u_int16_t evalTimeEvery = 1000;
+/* Check summertime every hour */
 unsigned long lastDaylightCheck = 0;
-u_int32_t checkDaylightTime = 3600000;
+u_int32_t checkDaylightTime = 3600 * 1000;
+
+/* Update rtc time every day */
 unsigned long lastRtcSync = 0;
-u_int32_t syncRtc = 24 * 3600;
+u_int32_t syncRtc = 24 * 3600 * 1000;
+
+/* Update time every second */
 unsigned long lastTimeUpdate = 0;
 u_int32_t updateTime = 1 * 1000;
 
-bool showCaptivePortal = true;
-
-LCH color1 = rgb_to_lch(0xFF0000);
-LCH color2 = rgb_to_lch(0x0000FF);
-
-double t_start = 2000.0;
-double t_end = 8000.0;
-double curr = 0.0;
-double step = 10.0;
-
 void loop() {
 
+  TIME time;
+  time.valid = false;
+
+  /* Starttimer */
   unsigned long start = millis();
 
   /* Display all red leds in red in case of an error. */
@@ -512,69 +509,54 @@ void loop() {
     return;
   }
 
+  /* Start webserver and ntp time when wifi was not connected during
+  setup and connection is now available. */
   if (!wifiConnected && WiFi.status() == WL_CONNECTED) {
     initWebFunctions();
   }
+  /* Stop webserver and ntp time when wifi conneciton is lost */
   if (wifiConnected && WiFi.status() != WL_CONNECTED) {
     stopWebFunctions();
   }
+  /* Store state of wifi connection */
   wifiConnected = WiFi.status() == WL_CONNECTED;
 
-  TIME time = getTime(&rtc, &timeClient, wifiConnected);
-  if (!time.valid) {
-    error = Error::NO_TIME;
+  /* Get the current time */
+  if (millis() - lastTimeUpdate > updateTime) {
+    time = getTime(&rtc, &timeClient, wifiConnected);
+    lastTimeUpdate = millis();
+
+    /* Error if time is not valid */
+    if (!time.valid) {
+      error = Error::NO_TIME;
+      return;
+    }
+
+    /* Run the wordprocessor to update the wordtime */
+    if (!timeProcessor->update(time.hour, time.minute, time.seconds)) {
+      error = Error::TIME_TO_WORD_CONVERSION;
+      return;
+    }
   }
 
-  if (time.valid &&
-      !timeProcessor->update(time.hour, time.minute, time.seconds)) {
-    Serial.println("Error occured");
-    error = Error::TIME_TO_WORD_CONVERSION;
-  }
-
-  if (wifiConnected == true &&
-      millis() - lastDaylightCheck > checkDaylightTime) {
+  /* Check if the summertime needs to be adjusted and if so, do so */
+  if (millis() - lastDaylightCheck > checkDaylightTime) {
     if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
                          wifiConnected) != true) {
       error = Error::SUMMERTIME_ERROR;
+      return;
     }
     lastDaylightCheck = millis();
   }
 
-#if DEBUG == 1
-  if (millis() - lastRun > evalTimeEvery) {
-    lastRun = millis();
-    Serial.println("===========");
-    TIME ntpTime = getTimeNtp(&timeClient);
-    Serial.print(ntpTime.hour);
-    Serial.print(":");
-    Serial.print(ntpTime.minute);
-    Serial.print(":");
-    Serial.println(ntpTime.seconds);
-    TIME rtcTime = getTimeRtc(&(rtc.rtc));
-    Serial.print(rtcTime.hour);
-    Serial.print(":");
-    Serial.print(rtcTime.minute);
-    Serial.print(":");
-    Serial.println(rtcTime.seconds);
-  }
-#endif
-
+  /* Update the time on the rtc from the ntp time */
   if (millis() - lastRtcSync > syncRtc && rtc.found == true) {
     if (updateRtcTime(&rtc, &time, wifiConnected) == false) {
       error = Error::UPDATE_RTC_TIME_ERROR;
+      return;
     }
     lastRtcSync = millis();
   }
-
-  if (millis() - lastTimeUpdate > updateTime && time.valid == true) {
-    showTime(settings->getTimeColor(), settings->getBackgroundColor());
-    lastTimeUpdate = millis();
-  }
-
-  interpolateTime();
-  // matrix.setBrightness(128);
-  // matrix.fillRect(0, ROW_PIXELS-1, 1, 1, matrix.Color(255, 0, 0));
-  // matrix.show();
 
   unsigned long end = millis();
 
