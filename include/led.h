@@ -11,16 +11,16 @@ class Led {
 public:
   Led();
   void interpolateColors();
-  void setTargetColor(RGB color);
-  RGB getColor();
-  RGB getTargetColor();
+  void setTargetColor(COLOR_RGB color);
+  COLOR_RGB getColor();
+  COLOR_RGB getTargetColor();
   bool raiseInterplateParam(u_int16_t param);
 
 private:
   u_int16_t interpol_param;
-  RGB current;
-  RGB start;
-  RGB target;
+  COLOR_RGB current;
+  COLOR_RGB start;
+  COLOR_RGB target;
   bool interpol_active;
 };
 #endif

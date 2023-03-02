@@ -67,7 +67,7 @@ void getWordCoords(int *buffer, String wordKey, String langKey) {
   JsonArray list;
   u_int8_t j;
 
-  list = words[wordKey][langKey]["coords"].as<JsonArray>();
+  list = words[wordKey][langKey]["pixels"].as<JsonArray>();
 
   j = 0;
   for (JsonVariant v : list) {
@@ -78,7 +78,7 @@ void getWordCoords(int *buffer, String wordKey, String langKey) {
 #if 0
 void interpolateTime() {
   Led *led;
-  RGB color;
+  COLOR_RGB color;
 
    matrix.setBrightness(settings->getBrightness() / 100.0 *
                         calcBrightnessScale(numActiveLeds));
@@ -98,7 +98,7 @@ void interpolateTime() {
   matrix.show();
 }
 
-void showTime(RGB color, RGB background) {
+void showTime(COLOR_RGB color, COLOR_RGB background) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   JsonArray list;
@@ -146,7 +146,7 @@ void showTime(RGB color, RGB background) {
       if (settings->getUseBackgroundColor() == true) {
         ledMatrix[i][j].setTargetColor(background);
       } else {
-        ledMatrix[i][j].setTargetColor(RGB{0, 0, 0});
+        ledMatrix[i][j].setTargetColor(COLOR_RGB{0, 0, 0});
       }
     }
   }

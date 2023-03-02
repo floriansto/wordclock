@@ -168,19 +168,20 @@ u_int32_t rgb_interp(u_int32_t c1, u_int32_t c2, double t) {
   u_int8_t g2 = (c2 & 0x00FF00) >> 8;
   u_int8_t b1 = c1 & 0x0000FF;
   u_int8_t b2 = c2 & 0x0000FF;
-  
+
   double r, g, b;
-  
+
   r = lerp((double)r1, (double)r2, t);
   g = lerp((double)g1, (double)g2, t);
   b = lerp((double)b1, (double)b2, t);
-  
-  Serial.print("r: ");
-  Serial.print((int)r);
-  Serial.print(" g: ");
-  Serial.print((int)g);
-  Serial.print(" b: ");
-  Serial.println((int)b);
 
   return ((int) r) << 16 | ((int) g) << 8 | ((int) b);
+}
+
+u_int32_t rgbToHex(u_int8_t r, u_int8_t g, u_int8_t b) {
+  return r << 16 | g << 8 | b;
+}
+
+COLOR_RGB hexToRgb(u_int32_t hex) {
+  return COLOR_RGB{hex >> 16, (hex & 0x00FF00) >> 8, hex & 0xFF};
 }

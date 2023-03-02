@@ -3,8 +3,8 @@
 
 #include <Arduino.h>
 
-struct RGB {
-  int r, g, b;
+struct COLOR_RGB {
+  u_int8_t r, g, b;
 };
 
 struct LCH {
