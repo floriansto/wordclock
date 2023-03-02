@@ -1,6 +1,5 @@
-#include <Adafruit_NeoMatrix.h>
-#include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
+#include <FastLED.h>
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -29,10 +28,7 @@
 
 #define DEBUG 0
 
-Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
-    ROW_PIXELS, COL_PIXELS, PIN,
-    NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
-    NEO_GRB + NEO_KHZ800);
+CRGB leds[NUMPIXELS];
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -55,7 +51,7 @@ Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
 
-Led ledMatrix[ROW_PIXELS][COL_PIXELS];
+//Led ledMatrix[ROW_PIXELS][COL_PIXELS];
 
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
@@ -77,6 +73,7 @@ void getWordCoords(int *buffer, String wordKey, String langKey) {
   }
 }
 
+#if 0
 void interpolateTime() {
   Led *led;
   RGB color;
@@ -156,13 +153,14 @@ void showTime(RGB color, RGB background) {
     numActiveLeds = NUMPIXELS;
   }
 }
+#endif
 
 void updateSettings() {
   timeProcessor->setDialect(settings->getUseDialect());
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
-  matrix.setBrightness(settings->getBrightness() / 100.0 *
+  FastLED.setBrightness(settings->getBrightness() / 100.0 *
                        calcBrightnessScale(numActiveLeds));
 }
 
@@ -437,8 +435,7 @@ void setup() {
 
   Wire.begin(D2, D1);
 
-  matrix.begin();
-  matrix.setTextWrap(false);
+  FastLED.addLeds<NEOPIXEL, PIN>(leds, NUMPIXELS);
 
   initFS();
 
@@ -460,7 +457,7 @@ void setup() {
   TIME time = getTime(&rtc, &timeClient, wifiConnected);
   if (time.valid == true &&
       timeProcessor->update(time.hour, time.minute, time.seconds) == true) {
-    showTime(settings->getTimeColor(), settings->getBackgroundColor());
+    //showTime(settings->getTimeColor(), settings->getBackgroundColor());
   }
 
   WiFi.mode(WIFI_STA);
@@ -492,11 +489,11 @@ u_int32_t updateTime = 1 * 1000;
 
 bool showCaptivePortal = true;
 
-LCH color1 = rgb_to_lch({255, 0, 0});
-LCH color2 = rgb_to_lch({0, 0, 255});
+LCH color1 = rgb_to_lch(0xFF0000);
+LCH color2 = rgb_to_lch(0x0000FF);
 
 double t_start = 2000.0;
-double t_end = 4000.0;
+double t_end = 8000.0;
 double curr = 0.0;
 double step = 10.0;
 
@@ -571,6 +568,8 @@ void loop() {
   delay(10);
 #endif
 
+  unsigned long start = millis();
+
   if (curr < t_start) {
     curr += step;
     delay(step);
@@ -586,7 +585,7 @@ void loop() {
   }
 
   double t = (curr - t_start) / (t_end - t_start);
-  RGB c = lch_interp(color1, color2, t);
+  u_int32_t c = lch_interp(color1, color2, t);
 
   //Serial.print("r: ");
   //Serial.print(c.r);
@@ -595,12 +594,17 @@ void loop() {
   //Serial.print(" b: ");
   //Serial.println(c.b);
 
-  matrix.fillRect(0, 0, COL_PIXELS, ROW_PIXELS, matrix.Color(c.r, c.g, c.b));
-  matrix.show();
+  for (int i = 0; i < NUMPIXELS; ++i) {
+    leds[i] = CRGB{c};
+  }
+  FastLED.setBrightness(64);
+  FastLED.show();
 
   curr += step;
 
-  //if (step - end + start > 0) {
-    //delay(step - end + start);
-  //}
+  unsigned long end = millis();
+
+  if (step - end + start > 0) {
+    delay(step - end + start);
+  }
 }

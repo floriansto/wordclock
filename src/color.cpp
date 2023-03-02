@@ -24,11 +24,11 @@ LAB xyz_to_lab(XYZ color) {
   return {l, a, b};
 }
 
-LCH rgb_to_lch(RGB rgb) {
+LCH rgb_to_lch(u_int32_t rgb) {
   // Convert RGB values from 0-255 range to 0-1 range
-  double r = rgb.r / 255.0;
-  double g = rgb.g / 255.0;
-  double b = rgb.b / 255.0;
+  double r = (rgb >> 16) / 255.0;
+  double g = ((rgb & 0x00FF00) >> 8) / 255.0;
+  double b = (rgb & 0xFF) / 255.0;
 
   // Convert sRGB values to linear RGB values
   if (r <= 0.04045) {
@@ -76,7 +76,7 @@ XYZ lab_to_xyz(LAB color) {
   return {xr * x_tmp, yr * y_tmp, zr * z_tmp};
 }
 
-RGB lch_to_rgb(LCH lch) {
+u_int32_t lch_to_rgb(LCH lch) {
   // Convert L*, C*, and h* values to XYZ values
   double l = lch.l;
   double c = lch.c;
@@ -126,14 +126,14 @@ RGB lch_to_rgb(LCH lch) {
   int green = static_cast<int>(g * 255 + 0.5);
   int blue = static_cast<int>(b * 255 + 0.5);
 
-  return {red, green, blue};
+  return red << 16 | green << 8 | blue;
 }
 
 // Linearly interpolate between two double values
 double lerp(double a, double b, double t) { return a * (1 - t) + b * t; }
 
 // Interpolate between two colors in CIELCH color space
-RGB lch_interp(LCH c1, LCH c2, double t) {
+u_int32_t lch_interp(LCH c1, LCH c2, double t) {
   // Interpolate L* and C* values linearly
   double l = lerp(c1.l, c2.l, t);
   double c = lerp(c1.c, c2.c, t);
@@ -158,4 +158,29 @@ RGB lch_interp(LCH c1, LCH c2, double t) {
   // Convert interpolated CIELCH color to RGB color
   LCH interpolated_color = {l, c, h};
   return lch_to_rgb(interpolated_color);
+}
+
+u_int32_t rgb_interp(u_int32_t c1, u_int32_t c2, double t) {
+
+  u_int8_t r1 = c1 >> 16;
+  u_int8_t r2 = c2 >> 16;
+  u_int8_t g1 = (c1 & 0x00FF00) >> 8;
+  u_int8_t g2 = (c2 & 0x00FF00) >> 8;
+  u_int8_t b1 = c1 & 0x0000FF;
+  u_int8_t b2 = c2 & 0x0000FF;
+  
+  double r, g, b;
+  
+  r = lerp((double)r1, (double)r2, t);
+  g = lerp((double)g1, (double)g2, t);
+  b = lerp((double)b1, (double)b2, t);
+  
+  Serial.print("r: ");
+  Serial.print((int)r);
+  Serial.print(" g: ");
+  Serial.print((int)g);
+  Serial.print(" b: ");
+  Serial.println((int)b);
+
+  return ((int) r) << 16 | ((int) g) << 8 | ((int) b);
 }

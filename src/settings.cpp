@@ -99,6 +99,7 @@ void Settings::setColor(String &rgbColor, const char *key) {
   settings[key].set(config.as<JsonArray>());
 }
 
+#if 0
 RGB Settings::getBackgroundColor() {
   return getColor(settings["backgroundColor"]);
 }
@@ -106,6 +107,7 @@ RGB Settings::getBackgroundColor() {
 RGB Settings::getTimeColor() {
   return getColor(settings["wordConfig"][0]["color"]);
 }
+#endif
 
 JsonVariant Settings::getTimeColorJson() {
   return settings["wordConfig"][0]["color"];

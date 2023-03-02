@@ -1,7 +1,7 @@
 #ifndef __COLOR_H__
 #define __COLOR_H__
 
-//#include <Arduino.h>
+#include <Arduino.h>
 
 struct RGB {
   int r, g, b;
@@ -24,8 +24,9 @@ struct LAB {
 #define yr 100
 #define zr 107.304
 
-LCH rgb_to_lch(RGB rgb);
-RGB lch_to_rgb(LCH lch);
-RGB lch_interp(LCH c1, LCH c2, double t);
+LCH rgb_to_lch(u_int32_t rgb);
+u_int32_t lch_to_rgb(LCH lch);
+u_int32_t lch_interp(LCH c1, LCH c2, double t);
+u_int32_t rgb_interp(u_int32_t c1, u_int32_t c2, double t);
 
 #endif

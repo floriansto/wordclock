@@ -6,6 +6,7 @@
 
 #define INTERPOLATION_TIME_MS 1500.0
 
+#if 0
 class Led {
 public:
   Led();
@@ -22,5 +23,6 @@ private:
   RGB target;
   bool interpol_active;
 };
+#endif
 
 #endif

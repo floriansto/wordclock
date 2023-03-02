@@ -1,5 +1,6 @@
 #include "../include/led.h"
 
+#if 0
 Led::Led() {
   this->interpol_param = 0;
   this->current = {.r = 0, .g = 0, .b = 0};
@@ -63,3 +64,4 @@ RGB Led::getColor() {
 RGB Led::getTargetColor() {
   return this->target;
 }
+#endif
