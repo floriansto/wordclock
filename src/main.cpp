@@ -54,8 +54,6 @@ Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
 
-// Led ledMatrix[ROW_PIXELS][COL_PIXELS];
-
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
   if (maxCurrent < maxCurrentAll) {
@@ -64,6 +62,7 @@ double calcBrightnessScale(u_int16_t activeLeds) {
   return 255.0 * maxCurrentAll / maxCurrent;
 }
 
+#if 0
 void getWordCoords(int *buffer, String wordKey, String langKey) {
   JsonArray list;
   u_int8_t j;
@@ -76,7 +75,6 @@ void getWordCoords(int *buffer, String wordKey, String langKey) {
   }
 }
 
-#if 0
 void interpolateTime() {
   Led *led;
   COLOR_RGB color;
@@ -117,6 +115,7 @@ void setLeds() {
   bool timeLeds[NUMPIXELS];
 
   langKey = settings->getLangKey();
+  memset(timeLeds, false, sizeof(timeLeds));
 
   for (u_int16_t i = 0; i < stack->getSize(); ++i) {
     /* Get the word key for each stack element */
@@ -132,7 +131,7 @@ void setLeds() {
     for (JsonVariant pixel : wordPixels) {
       led = pixel.as<u_int16_t>();
       timeLeds[led] = true;
-      if (newColor[led] == timeColorRgb) {
+      if (newColor[led] != timeColorRgb) {
         oldColor[led] = leds[led];
         interpolationTime[led] = 0.0;
       }
@@ -140,19 +139,12 @@ void setLeds() {
     }
   }
 
-  /* Exit if background color is disabled */
-  if (background == 0x000000) {
-    return;
-  }
-
-  Serial.println("Background color is enabled");
-
   /* Fill all non time relevant leds with the background color */
   for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
     if (timeLeds[i]) {
       continue;
     }
-    if (leds[i] == backgroundRgb) {
+    if (newColor[i] == backgroundRgb) {
       continue;
     }
     newColor[i] = backgroundRgb;
@@ -162,16 +154,51 @@ void setLeds() {
 }
 
 void interpolateLeds() {
-  u_int16_t interpolationDuration = 8000;
+  u_int16_t interpolationDuration = 2000;
+  CRGB prevCol1{0, 0, 0};
+  CRGB prevCol2{0, 0, 0};
+  LCH color1;
+  LCH color2;
+  u_int32_t c;
+  bool equal{false};
+  double t;
   for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
     if (interpolationTime[i] > interpolationDuration) {
       continue;
     }
-    LCH color1 = rgb_to_lch(rgbToHex(oldColor[i]));
-    LCH color2 = rgb_to_lch(rgbToHex(newColor[i]));
-    u_int32_t c = lch_interp(color1, color2, interpolationTime[i]);
+    //if ( i == 0) {
+      //Serial.println(interpolationTime[i]);
+      //Serial.print("r: ");
+      //Serial.print(oldColor[i].r);
+      //Serial.print(" g: ");
+      //Serial.print(oldColor[i].g);
+      //Serial.print(" b: ");
+      //Serial.println(oldColor[i].b);
+      //Serial.print("r: ");
+      //Serial.print(newColor[i].r);
+      //Serial.print(" g: ");
+      //Serial.print(newColor[i].g);
+      //Serial.print(" b: ");
+      //Serial.println(newColor[i].b);
+      //Serial.println("===========================");
+    //}
+    if (prevCol1 != oldColor[i]) {
+      color1 = rgb_to_lch(rgbToHex(oldColor[i]));
+      prevCol1 = oldColor[i];
+      equal = false;
+    }
+    if (prevCol2 != newColor[i]) {
+      color2 = rgb_to_lch(rgbToHex(newColor[i]));
+      prevCol2 = newColor[i];
+      equal = false;
+    }
+    t = interpolationTime[i] / interpolationDuration;
+    if (!equal) {
+      c = lch_interp(color1, color2, t);
+    }
     leds[i] = c;
     interpolationTime[i] += cycleTimeMs;
+    equal = true;
   }
 }
 
@@ -244,6 +271,7 @@ void updateSettings() {
                         calcBrightnessScale(numActiveLeds));
 }
 
+#if 0
 void getActiveLeds(u_int16_t *dest) {
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
@@ -286,6 +314,7 @@ void getActiveLeds(u_int16_t *dest) {
     }
   }
 }
+#endif
 
 String getWordTime() {
   TIMESTACK elem;
@@ -319,6 +348,7 @@ void notifyClients() {
   // showTime(settings->getTimeColor(), settings->getBackgroundColor());
 }
 
+#if 0
 void getActiveLedsToWeb(JsonObject &json) {
   String jsonString;
   u_int16_t activeLeds[ROW_PIXELS];
@@ -333,10 +363,11 @@ void getActiveLedsToWeb(JsonObject &json) {
     array.add(activeLeds[ROW_PIXELS - 1 - i]);
   }
 }
+#endif
 
 void getTimeToWeb(JsonObject &json) {
   json["wordTime"] = getWordTime();
-  getActiveLedsToWeb(json);
+  //getActiveLedsToWeb(json);
 }
 
 void getSettingsToWeb(JsonObject &json) { settings->toJsonDoc(json); }
@@ -612,8 +643,6 @@ void loop() {
       error = Error::TIME_TO_WORD_CONVERSION;
       return;
     }
-
-    setLeds();
   }
 
   /* Check if the summertime needs to be adjusted and if so, do so */
@@ -635,11 +664,13 @@ void loop() {
     lastRtcSync = millis();
   }
 
+  setLeds();
   interpolateLeds();
   FastLED.show();
 
   unsigned long end = millis();
 
+  Serial.println(end - start);
   if (cycleTimeMs > end - start) {
     delay(cycleTimeMs - end + start);
   }
