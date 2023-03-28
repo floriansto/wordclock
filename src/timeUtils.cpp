@@ -5,10 +5,17 @@
 #include "../include/main.h"
 #include "../include/timeUtils.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 bool updateRtcTime(RTC *rtc, TIME *time, bool wifiConnected) {
-  if (wifiConnected == false && rtc->valid == false) {
+  if (rtc->found == false) {
+#if DEBUG
+    Serial.println("Missing rtc, time cannot be updated");
+#endif
+    return true;
+  }
+
+  if (wifiConnected == false) {
 #if DEBUG
     Serial.println("Missing wifi connection, cannot adjust NTP time");
 #endif
@@ -124,8 +131,14 @@ bool adjustSummertime(RTC *rtc, NTPClient *timeClient, s8_t utcHourOffsets,
     return false;
   }
   if (summertime_EU(time, utcHourOffsets) == true) {
+#if DEBUG
+    Serial.println("Summertime is active");
+#endif
     timeClient->setTimeOffset((utcHourOffsets + 1) * 3600);
   } else {
+#if DEBUG
+    Serial.println("Summertime is inactive");
+#endif
     timeClient->setTimeOffset(utcHourOffsets * 3600);
   }
   timeClient->update();
