@@ -98,6 +98,19 @@ void interpolateTime() {
 }
 #endif
 
+#if DEBUG
+void printColor(CRGB *color) {
+  Serial.print("rgb: (");
+  Serial.print(color->r);
+  Serial.print(", ");
+  Serial.print(color->g);
+  Serial.print(", ");
+  Serial.print(color->b);
+  Serial.println(")");
+}
+#endif
+
+
 /**
  * Set new target and start led colors for a given time
 */
@@ -157,46 +170,26 @@ void interpolateLeds() {
   u_int16_t interpolationDuration = 2000;
   CRGB prevCol1{0, 0, 0};
   CRGB prevCol2{0, 0, 0};
-  LCH color1;
-  LCH color2;
-  u_int32_t c;
+  u_int32_t c = 0x0;
   bool equal{false};
   double t;
   for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
     if (interpolationTime[i] > interpolationDuration) {
       continue;
     }
-    //if ( i == 0) {
-      //Serial.println(interpolationTime[i]);
-      //Serial.print("r: ");
-      //Serial.print(oldColor[i].r);
-      //Serial.print(" g: ");
-      //Serial.print(oldColor[i].g);
-      //Serial.print(" b: ");
-      //Serial.println(oldColor[i].b);
-      //Serial.print("r: ");
-      //Serial.print(newColor[i].r);
-      //Serial.print(" g: ");
-      //Serial.print(newColor[i].g);
-      //Serial.print(" b: ");
-      //Serial.println(newColor[i].b);
-      //Serial.println("===========================");
-    //}
     if (prevCol1 != oldColor[i]) {
-      color1 = rgb_to_lch(rgbToHex(oldColor[i]));
       prevCol1 = oldColor[i];
       equal = false;
     }
     if (prevCol2 != newColor[i]) {
-      color2 = rgb_to_lch(rgbToHex(newColor[i]));
       prevCol2 = newColor[i];
       equal = false;
     }
     t = interpolationTime[i] / interpolationDuration;
     if (!equal) {
-      c = lch_interp(color1, color2, t);
+      c = rgb_interp(rgbToHex(oldColor[i]), rgbToHex(newColor[i]), t);
     }
-    leds[i] = c;
+    leds[i] = CRGB{c};
     interpolationTime[i] += cycleTimeMs;
     equal = true;
   }
@@ -555,6 +548,8 @@ void setup() {
   FastLED.clear();
   FastLED.show();
 
+  memset(interpolationTime, 0, sizeof(interpolationTime));
+
   /* Initialize filesystem */
   initFS();
 
@@ -670,7 +665,6 @@ void loop() {
 
   unsigned long end = millis();
 
-  Serial.println(end - start);
   if (cycleTimeMs > end - start) {
     delay(cycleTimeMs - end + start);
   }
