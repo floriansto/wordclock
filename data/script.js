@@ -204,7 +204,7 @@ function onMessage(event) {
           if (intColor == 0)
             intColor = 0xFFFFFF;
           rgb = intToRgbColor(intColor);
-          cell.style.backgroundColor = convertRGBtoHex(rgb[0], rgb[1], rgb[2]);
+          cell.style.color = convertRGBtoHex(rgb[0], rgb[1], rgb[2]);
         }
       }
     }
