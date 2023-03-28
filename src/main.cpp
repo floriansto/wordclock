@@ -435,16 +435,16 @@ void setup() {
 }
 
 /* Check summertime every hour */
-unsigned long lastDaylightCheck = 0;
 u_int32_t checkDaylightTime = 3600 * 1000;
+unsigned long lastDaylightCheck = checkDaylightTime;
 
 /* Update rtc time every day */
-unsigned long lastRtcSync = 0;
 u_int32_t syncRtc = 24 * 3600 * 1000;
+unsigned long lastRtcSync = syncRtc;
 
 /* Update time every second */
-unsigned long lastTimeUpdate = 0;
 u_int32_t updateTime = 1 * 1000;
+unsigned long lastTimeUpdate = updateTime;
 
 void loop() {
 
