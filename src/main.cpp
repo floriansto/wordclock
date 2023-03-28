@@ -338,29 +338,25 @@ String getWordTime() {
 void notifyClients() {
   updateSettings();
   settings->saveSettings();
+  setLeds();
   // showTime(settings->getTimeColor(), settings->getBackgroundColor());
 }
 
-#if 0
-void getActiveLedsToWeb(JsonObject &json) {
+void getLedColorToWeb(JsonObject &json) {
   String jsonString;
-  u_int16_t activeLeds[ROW_PIXELS];
-  memset(activeLeds, 0, sizeof(activeLeds));
 
-  getActiveLeds(activeLeds);
   json["timeColor"] = settings->getTimeColorJson();
 
   JsonArray array = json.createNestedArray("activeLeds");
 
-  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
-    array.add(activeLeds[ROW_PIXELS - 1 - i]);
+  for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
+    array.add(rgbToHex(newColor[i]));
   }
 }
-#endif
 
 void getTimeToWeb(JsonObject &json) {
   json["wordTime"] = getWordTime();
-  //getActiveLedsToWeb(json);
+  getLedColorToWeb(json);
 }
 
 void getSettingsToWeb(JsonObject &json) { settings->toJsonDoc(json); }

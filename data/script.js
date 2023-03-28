@@ -60,8 +60,19 @@ function hexToColor(hex) {
   return [r, g, b];
 }
 
+function intToRgbColor(intValue) {
+  // Extract the red, green, and blue components from the integer
+  var red = (intValue >> 16) & 0xFF;
+  var green = (intValue >> 8) & 0xFF;
+  var blue = intValue & 0xFF;
+
+  // Return the RGB color values as an array
+  return [red, green, blue];
+}
+
 function processColorPicker(element) {
   var colorValue = document.getElementById(element.id).value;
+  console.log(colorValue)
   var rgb = hexToColor(colorValue);
   websocket.send(element.id + "=" + JSON.stringify(rgb));
 }
@@ -185,24 +196,16 @@ function onMessage(event) {
 
     if (key === "activeLeds") {
       var table = document.getElementById("preview");
-      var backgroundColor = document.getElementById("backgroundColor").value;
-      var useBackgroundColor = document.getElementById("switchBackgroundColor").checked;
 
-      if (!useBackgroundColor)
-        backgroundColor = "white";
-
-      var i = 0;
+      var j = 0;
       for (let row of table.rows) {
-        var leds = myObj[key][i];
-        var j = 0;
         for (let cell of row.cells) {
-          if (leds & (1 << j))
-            cell.style.backgroundColor = timeColor;
-          else
-            cell.style.backgroundColor = backgroundColor;
-          ++j;
+          intColor = parseInt(myObj[key][j++]);
+          if (intColor == 0)
+            intColor = 0xFFFFFF;
+          rgb = intToRgbColor(intColor);
+          cell.style.backgroundColor = convertRGBtoHex(rgb[0], rgb[1], rgb[2]);
         }
-        ++i;
       }
     }
   }
