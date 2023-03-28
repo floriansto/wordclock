@@ -62,42 +62,6 @@ double calcBrightnessScale(u_int16_t activeLeds) {
   return 255.0 * maxCurrentAll / maxCurrent;
 }
 
-#if 0
-void getWordCoords(int *buffer, String wordKey, String langKey) {
-  JsonArray list;
-  u_int8_t j;
-
-  list = words[wordKey][langKey]["pixels"].as<JsonArray>();
-
-  j = 0;
-  for (JsonVariant v : list) {
-    buffer[j++] = v.as<int>();
-  }
-}
-
-void interpolateTime() {
-  Led *led;
-  COLOR_RGB color;
-
-  matrix.setBrightness(settings->getBrightness() / 100.0 *
-                       calcBrightnessScale(numActiveLeds));
-  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
-    for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
-      led = &ledMatrix[i][j];
-      if (led->raiseInterplateParam(10) == false) {
-        continue;
-      }
-      led->interpolateColors();
-      color = led->getColor();
-      // Serial.println(color.r);
-      matrix.fillRect(j, ROW_PIXELS - i - 1, 1, 1,
-                      matrix.Color(color.r, color.g, color.b));
-    }
-  }
-  matrix.show();
-}
-#endif
-
 #if DEBUG
 void printColor(CRGB *color) {
   Serial.print("rgb: (");
@@ -110,10 +74,9 @@ void printColor(CRGB *color) {
 }
 #endif
 
-
 /**
  * Set new target and start led colors for a given time
-*/
+ */
 void setLeds() {
   u_int32_t timeColor = rgbToHex(settings->getTimeColor());
   u_int32_t background = rgbToHex(settings->getBackgroundColor());
@@ -195,66 +158,6 @@ void interpolateLeds() {
   }
 }
 
-#if 0
-void showTime(COLOR_RGB color, COLOR_RGB background) {
-  Timestack *stack = timeProcessor->getStack();
-  TIMESTACK elem;
-  JsonArray list;
-  int buffer[4]{0, 0, 0, 0};
-  String langKey;
-  String wordKey;
-  bool words[ROW_PIXELS][COL_PIXELS];
-
-  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
-    for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
-      words[i][j] = false;
-    }
-  }
-
-  if (settings->getUseDialect())
-    langKey = "de-Dialect";
-  else
-    langKey = "de-DE";
-
-  numActiveLeds = 0;
-  for (int i = 0; i < stack->getSize(); ++i) {
-    if (!stack->get(&elem, i)) {
-      error = Error::TIMESTACK_GET_ELEM_FAILED;
-      return;
-    }
-
-    json_key_from_state(elem.state, wordKey);
-    getWordCoords(buffer, wordKey, langKey);
-
-    for (u_int8_t j = 0; j < buffer[2]; ++j) {
-      for (u_int8_t k = 0; k < buffer[3]; ++k) {
-        ledMatrix[ROW_PIXELS - 1 - buffer[1] - k][j + buffer[0]].setTargetColor(
-            color);
-        words[ROW_PIXELS - 1 - buffer[1] - k][j + buffer[0]] = true;
-      }
-    }
-    numActiveLeds += (buffer[2] * buffer[3]);
-  }
-
-  for (u_int8_t i = 0; i < ROW_PIXELS; ++i) {
-    for (u_int8_t j = 0; j < COL_PIXELS; ++j) {
-      if (words[i][j]) {
-        continue;
-      }
-      if (settings->getUseBackgroundColor() == true) {
-        ledMatrix[i][j].setTargetColor(background);
-      } else {
-        ledMatrix[i][j].setTargetColor(COLOR_RGB{0, 0, 0});
-      }
-    }
-  }
-
-  if (settings->getUseBackgroundColor() == true) {
-    numActiveLeds = NUMPIXELS;
-  }
-}
-#endif
-
 void updateSettings() {
   timeProcessor->setDialect(settings->getUseDialect());
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
@@ -263,51 +166,6 @@ void updateSettings() {
   FastLED.setBrightness(settings->getBrightness() / 100.0 *
                         calcBrightnessScale(numActiveLeds));
 }
-
-#if 0
-void getActiveLeds(u_int16_t *dest) {
-  Timestack *stack = timeProcessor->getStack();
-  TIMESTACK elem;
-  JsonArray list;
-  int buffer[4]{0, 0, 0, 0};
-  String langKey;
-  String wordKey;
-  u_int8_t x;
-  u_int8_t y;
-  u_int8_t x_len;
-  u_int8_t y_len;
-
-  if (settings->getUseDialect())
-    langKey = "de-Dialect";
-  else
-    langKey = "de-DE";
-
-  /* Raise datatype of dest to u_int32_t to handle more
-  than 16 columns of leds. */
-  static_assert(COL_PIXELS <= 16);
-
-  for (u_int8_t k = 0; k < stack->getSize(); ++k) {
-    if (!stack->get(&elem, k)) {
-      error = Error::TIMESTACK_GET_ELEM_FAILED;
-      return;
-    }
-
-    json_key_from_state(elem.state);
-    getWordCoords(buffer, wordKey, langKey);
-
-    x = buffer[0];
-    y = buffer[1];
-    x_len = buffer[2];
-    y_len = buffer[3];
-
-    for (u_int8_t j = y; j < y + y_len; ++j) {
-      for (u_int8_t i = x; i < x + x_len; ++i) {
-        dest[j] |= 1 << i;
-      }
-    }
-  }
-}
-#endif
 
 String getWordTime() {
   TIMESTACK elem;
