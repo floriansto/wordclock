@@ -3,7 +3,7 @@
 
 #include "../include/color.h"
 
-#define JSON_SETTINGS_SIZE 3200
+#define JSON_SETTINGS_SIZE 2048
 
 class Settings {
 public:
