@@ -5,7 +5,7 @@
 #include "../include/main.h"
 #include "../include/timeUtils.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 bool updateRtcTime(RTC *rtc, TIME *time, bool wifiConnected) {
   if (rtc->found == false) {
