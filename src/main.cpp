@@ -229,7 +229,7 @@ void getLedColorToWeb(JsonObject &json) {
   JsonArray array = json.createNestedArray("activeLeds");
 
   for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
-    array.add(rgbToHex(newColor[i]));
+    array.add(rgbToHex(newColor[mapLedIndex(i)]));
   }
 }
 
