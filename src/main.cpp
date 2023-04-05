@@ -241,7 +241,7 @@ void getTimeToWeb(JsonObject &json) {
 void getSettingsToWeb(JsonObject &json) { settings->toJsonDoc(json); }
 
 void sendJson(void function(JsonObject &json)) {
-  StaticJsonDocument<JSON_SETTINGS_SIZE> json;
+  DynamicJsonDocument json(4096);
   JsonObject obj = json.to<JsonObject>();
   String str;
 
