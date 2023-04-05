@@ -5,7 +5,7 @@
 #include "../include/hw_settings.h"
 #include "../include/settings.h"
 
-Settings::Settings() {
+Settings::Settings(LedWiring ledWiring) {
   int mainColor[3]{252, 184, 33};
   int bgColor[3]{246, 245, 244};
   settings["brightnessSlider"] = 100;
@@ -22,6 +22,11 @@ Settings::Settings() {
   array[0]["when"] = "Always";
   JsonArray color = array[0].createNestedArray("color");
   copyArray(mainColor, color);
+  this->ledwiring = ledWiring;
+}
+
+LedWiring Settings::getLedWiring() {
+  return this->ledwiring;
 }
 
 void Settings::setUseDialect(bool useDialect) {

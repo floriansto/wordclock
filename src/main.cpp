@@ -20,7 +20,6 @@
 
 #include "../include/color.h"
 #include "../include/hw_settings.h"
-#include "../include/led.h"
 #include "../include/main.h"
 #include "../include/settings.h"
 #include "../include/timeUtils.h"
@@ -42,7 +41,7 @@ WiFiUDP ntpUDP;
 RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
-Settings *settings = new Settings();
+Settings *settings = new Settings(LedWiring::ZIGZAG);
 DynamicJsonDocument wordsDoc(8192);
 JsonObject words;
 
@@ -106,6 +105,14 @@ void setLeds() {
     /* Set the color for each active pixel */
     for (JsonVariant pixel : wordPixels) {
       led = pixel.as<u_int16_t>();
+      switch (settings->getLedWiring()) {
+      case LedWiring::ZIGZAG:
+        if ((int(led/COL_PIXELS)) % 2 > 0)
+          led = COL_PIXELS - (led % COL_PIXELS) + COL_PIXELS * (int)(led/COL_PIXELS) - 1;
+        break;
+      default:
+        break;
+      }
       timeLeds[led] = true;
       if (newColor[led] != timeColorRgb) {
         oldColor[led] = leds[led];

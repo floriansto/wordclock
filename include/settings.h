@@ -5,9 +5,14 @@
 
 #define JSON_SETTINGS_SIZE 2048
 
+
+enum class LedWiring {
+  ZIGZAG,
+  MATRIX,
+};
 class Settings {
 public:
-  Settings();
+  Settings(LedWiring ledWiring);
   void setUseDialect(bool useDialect);
   bool getUseDialect();
   void setUseThreeQuater(bool useThreeQuater);
@@ -29,9 +34,11 @@ public:
   COLOR_RGB getTimeColor();
   JsonVariant getTimeColorJson();
   String getLangKey();
+  LedWiring getLedWiring();
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
+  LedWiring ledwiring;
 };
 
 #endif
