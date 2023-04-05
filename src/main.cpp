@@ -74,6 +74,28 @@ void printColor(CRGB *color) {
 #endif
 
 /**
+ * Map the led number from the configuration file to the
+ * led index on the led strip.
+ * The led index on the strip depends on the wiring of
+ * the led strips.
+ * The leds in the configuration file are numbered like you
+ * read a book: Top left is zero, after the first row begin
+ * the next row on the left again.
+*/
+u_int16_t mapLedIndex(u_int16_t led) {
+  /* Map led index depending on the wiring of the led strip*/
+  switch (settings->getLedWiring()) {
+  case LedWiring::ZIGZAG:
+    if ((int(led / COL_PIXELS)) % 2 == 0)
+      return led;
+    return COL_PIXELS - (led % COL_PIXELS) +
+           COL_PIXELS * (int)(led / COL_PIXELS) - 1;
+  default:
+    return led;
+  }
+}
+
+/**
  * Set new target and start led colors for a given time
  */
 void setLeds() {
@@ -104,15 +126,7 @@ void setLeds() {
     wordPixels = words[wordKey][langKey]["pixels"].as<JsonArray>();
     /* Set the color for each active pixel */
     for (JsonVariant pixel : wordPixels) {
-      led = pixel.as<u_int16_t>();
-      switch (settings->getLedWiring()) {
-      case LedWiring::ZIGZAG:
-        if ((int(led/COL_PIXELS)) % 2 > 0)
-          led = COL_PIXELS - (led % COL_PIXELS) + COL_PIXELS * (int)(led/COL_PIXELS) - 1;
-        break;
-      default:
-        break;
-      }
+      led = mapLedIndex(pixel.as<u_int16_t>());
       timeLeds[led] = true;
       if (newColor[led] != timeColorRgb) {
         oldColor[led] = leds[led];
