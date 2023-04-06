@@ -98,6 +98,8 @@ table, th, td{
 .td_preview {
   text-align: center;
   vertical-align: center;
+  background-color: rgb(92, 92, 92);
+  font-weight: 999;
 }
 
 .word_table, .word_th, .word_td{

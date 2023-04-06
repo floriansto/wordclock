@@ -8,6 +8,7 @@
 
 const double maxCurrentAll = 3000.0;
 const double maxCurrentPerLed = 50;
+const u_int8_t cycleTimeMs = 10;
 const u_int16_t offsetLowSecs = 150;
 const u_int16_t offsetHighSecs = 300 - offsetLowSecs;
 

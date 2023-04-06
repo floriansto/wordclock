@@ -5,7 +5,7 @@
 #include "../include/hw_settings.h"
 #include "../include/settings.h"
 
-Settings::Settings() {
+Settings::Settings(LedWiring ledWiring) {
   int mainColor[3]{252, 184, 33};
   int bgColor[3]{246, 245, 244};
   settings["brightnessSlider"] = 100;
@@ -22,6 +22,11 @@ Settings::Settings() {
   array[0]["when"] = "Always";
   JsonArray color = array[0].createNestedArray("color");
   copyArray(mainColor, color);
+  this->ledwiring = ledWiring;
+}
+
+LedWiring Settings::getLedWiring() {
+  return this->ledwiring;
 }
 
 void Settings::setUseDialect(bool useDialect) {
@@ -84,7 +89,7 @@ void Settings::setWordConfig(String &wordConfig) {
   Serial.println(settings.memoryUsage());
 }
 
-COLOR getColor(JsonArray color) { return COLOR{color[0], color[1], color[2]}; }
+COLOR_RGB getColor(JsonArray color) { return COLOR_RGB{color[0], color[1], color[2]}; }
 
 void Settings::setColor(String &rgbColor, const char *key) {
   StaticJsonDocument<64> config;
@@ -99,11 +104,14 @@ void Settings::setColor(String &rgbColor, const char *key) {
   settings[key].set(config.as<JsonArray>());
 }
 
-COLOR Settings::getBackgroundColor() {
-  return getColor(settings["backgroundColor"]);
+COLOR_RGB Settings::getBackgroundColor() {
+  if (this->getUseBackgroundColor()) {
+    return getColor(settings["backgroundColor"]);
+  }
+  return COLOR_RGB{0, 0, 0};
 }
 
-COLOR Settings::getTimeColor() {
+COLOR_RGB Settings::getTimeColor() {
   return getColor(settings["wordConfig"][0]["color"]);
 }
 
@@ -147,4 +155,11 @@ void Settings::loadSettings() {
     return;
   }
   Serial.println("Loaded settings");
+}
+
+String Settings::getLangKey() {
+  if (this->getUseDialect()) {
+    return "de-Dialect";
+  }
+  return "de-DE";
 }

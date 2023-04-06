@@ -1,16 +1,18 @@
 #ifndef __SETTINGS_H__
 #define __SETTINGS_H__
 
-#define JSON_SETTINGS_SIZE 2048
-typedef struct _color {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-} COLOR;
+#include "../include/color.h"
 
+#define JSON_SETTINGS_SIZE 2048
+
+
+enum class LedWiring {
+  ZIGZAG,
+  MATRIX,
+};
 class Settings {
 public:
-  Settings();
+  Settings(LedWiring ledWiring);
   void setUseDialect(bool useDialect);
   bool getUseDialect();
   void setUseThreeQuater(bool useThreeQuater);
@@ -27,13 +29,16 @@ public:
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   void setColor(String &rgbColor, const char *key);
-  COLOR getBackgroundColor();
+  COLOR_RGB getBackgroundColor();
   void setWordConfig(String &wordConfig);
-  COLOR getTimeColor();
+  COLOR_RGB getTimeColor();
   JsonVariant getTimeColorJson();
+  String getLangKey();
+  LedWiring getLedWiring();
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
+  LedWiring ledwiring;
 };
 
 #endif
