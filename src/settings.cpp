@@ -16,6 +16,8 @@ Settings::Settings(LedWiring ledWiring) {
   settings["utcTimeOffset"] = 1;
   JsonArray array = settings.createNestedArray("backgroundColor");
   copyArray(bgColor, array);
+  array = settings.createNestedArray("timeColor");
+  copyArray(mainColor, array);
   array = settings.createNestedArray("wordConfig");
   array[0]["enable"] = true;
   array[0]["words"] = "TIME";
@@ -112,11 +114,7 @@ COLOR_RGB Settings::getBackgroundColor() {
 }
 
 COLOR_RGB Settings::getTimeColor() {
-  return getColor(settings["wordConfig"][0]["color"]);
-}
-
-JsonVariant Settings::getTimeColorJson() {
-  return settings["wordConfig"][0]["color"];
+  return getColor(settings["timeColor"]);
 }
 
 void Settings::toJsonDoc(JsonObject &json) {

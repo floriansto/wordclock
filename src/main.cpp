@@ -224,8 +224,6 @@ void notifyClients() {
 void getLedColorToWeb(JsonObject &json) {
   String jsonString;
 
-  json["timeColor"] = settings->getTimeColorJson();
-
   JsonArray array = json.createNestedArray("activeLeds");
 
   for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
@@ -293,6 +291,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
       settings->setColor(backgroundColorStr, "backgroundColor");
+      notifyClients();
+      sendJson(getTimeToWeb);
+    }
+    if (message.indexOf("timeColor") == 0) {
+      String timeColorStr = message.substring(message.indexOf("=") + 1);
+      settings->setColor(timeColorStr, "timeColor");
       notifyClients();
       sendJson(getTimeToWeb);
     }

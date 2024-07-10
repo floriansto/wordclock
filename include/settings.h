@@ -32,7 +32,6 @@ public:
   COLOR_RGB getBackgroundColor();
   void setWordConfig(String &wordConfig);
   COLOR_RGB getTimeColor();
-  JsonVariant getTimeColorJson();
   String getLangKey();
   LedWiring getLedWiring();
 
