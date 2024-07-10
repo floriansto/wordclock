@@ -327,6 +327,7 @@ function saveWords() {
   var invalidDate = "";
   var validLeds = true;
   var invalidLeds = "";
+  var useDate = true;
   for (let row of table.rows) {
     if (i < 2) {
       ++i;
@@ -365,9 +366,12 @@ function saveWords() {
           break;
         case "when":
           jsonContent["when"] = content.options[content.selectedIndex].text;
+          if (jsonContent["when"] == "Always") {
+            useDate = false
+          }
           break;
         case "date":
-          if (!validateDate(content.value)) {
+          if (!validateDate(content.value) && (useDate || (!useDate && content.value != ""))) {
             validDate = false;
             invalidDate = content.value;
             break;
