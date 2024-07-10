@@ -65,6 +65,10 @@
         <td><input id="switchBackgroundColor" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
+        <td>Time color</td>
+        <td><input id="timeColor" type="color" onchange="processColorPicker(this)"></td>
+      </tr>
+      <tr>
         <td>Background color</td>
         <td><input id="backgroundColor" type="color" onchange="processColorPicker(this)"></td>
       </tr>
@@ -81,7 +85,7 @@
           Enable
         </td>
         <td class="word_td">
-          Wordlist (comma separated)
+          Active LEDs
         </td>
         <td class="word_td">
           Color
@@ -90,23 +94,25 @@
           When
         </td>
         <td class="word_td">
-          Date (ignore year)
+          Date (DD.MM)
         </td>
         <td class="word_td">
           Action
         </td>
       </tr>
-      <tr class="word_tr">
-        <td class="word_td"><input type="checkbox" checked></td>
-        <td class="word_td">TIME</td>
-        <td class="word_td"><input type="color" value="#FCB821"></td>
-        <td class="word_td"><select name="When"><option value="always">Always</option></select></td>
+      <tr class="word_tr" hidden>
+        <td class="word_td"></td>
+        <td class="word_td"></td>
+        <td class="word_td"></td>
+        <td class="word_td"></td>
         <td class="word_td"></td>
         <td class="word_td"></td>
       </tr>
     </table>
     <br>
     <div align="center">
+      <p hidden="false" id="dateError" align="center" class="errorMessage">Error in date</p>
+      <p hidden="false" id="ledError" align="center" class="errorMessage">Error in LEDs</p>
       <button type="button" id="add-row" onclick="addRow('word-config')">Add</button>
       <button type="button" id="save-words" onclick="saveWords()">Save</button>
     </div>

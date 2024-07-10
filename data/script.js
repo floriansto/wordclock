@@ -119,6 +119,8 @@ function onMessage(event) {
       }
     }
 
+    console.log("Got key " + key);
+
     if (key == "timeColor") {
       var color = myObj[key];
       timeColor = convertRGBtoHex(color[0], color[1], color[2]);
@@ -142,48 +144,42 @@ function onMessage(event) {
         ++counter;
       }
 
+      console.log(myObj[key]);
+
       counter = 0
       for (let i of myObj[key]) {
-        if (counter === 0) {
-          ++counter;
-          continue;
-        }
         addRow("word-config");
         console.log("Add Row");
         console.log(i);
 
-        let row = table.rows[counter + 1]
+        let row = table.rows[counter + 2]
         for (let cell of row.cells) {
           let content = cell.childNodes[0];
 
           if (content === undefined)
             continue
 
-          switch (content.type) {
-            case "text":
-              content.value = i["words"];
+          switch (content.id) {
+            case "leds":
+              console.log(i["leds"].toString());
+              content.value = i["leds"].toString();
               break;
             case "color":
               content.value = convertRGBtoHex(i["color"][0], i["color"][1], i["color"][2]);
               break;
-            case "checkbox":
+            case "enable":
               content.checked = i["enable"];
               break;
-            case "select-one":
+            case "when":
               for (var j = 0; j < content.options.length; ++j) {
                 if (content.options[j].text === i["when"]) {
-                    content.selectedIndex = j;
-                    break;
+                  content.selectedIndex = j;
+                  break;
                 }
               }
               break;
             case "date":
-              if (!i["date"]["valid"]) {
-                break;
-              }
-              var year = new Date().getFullYear();
-              var date = new Date(year, i["date"]["month"] - 1, i["date"]["day"] + 1);
-              content.valueAsDate = date;
+              content.value = i["date"]["day"] + "." + i["date"]["month"];
               break;
             default:
               break;
@@ -248,19 +244,19 @@ function addRow(tableID) {
 
     switch (i) {
       case 0:
-        newcell.innerHTML = '<td class="word_td"><input type="checkbox"></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="checkbox", id="enable"></td>';
         break;
       case 1:
-        newcell.innerHTML = '<td class="word_td"><input type="text"></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="text", id="leds"></td>';
         break;
       case 2:
-        newcell.innerHTML = '<td class="word_td"><input type="color"></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="color", id="color"></td>';
         break;
       case 3:
-        newcell.innerHTML = '<td class="word_td"><select name="When"><option value="always">Always</option><option value="date">Date</option></select></td>';
+        newcell.innerHTML = '<td class="word_td"><select name="When", id="when"><option value="always">Always</option><option value="date">Date</option></select></td>';
         break;
       case 4:
-        newcell.innerHTML = '<td class="word_td"><input type="date"></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="text", id="date"></td>';
         break;
       case 5:
         newcell.innerHTML = '<td class="word_td"><button type="button">Delete</button></td>';
@@ -272,7 +268,7 @@ function addRow(tableID) {
 
     switch (newcell.childNodes[0].type) {
       case "text":
-        newcell.childNodes[0].value = "GLÜCK";
+        newcell.childNodes[0].value = "";
         break;
       case "color":
         newcell.childNodes[0].value = "#FCB821";
@@ -284,7 +280,7 @@ function addRow(tableID) {
         newcell.childNodes[0].selectedIndex = 1;
         break;
       case "button":
-        newcell.childNodes[0].addEventListener("click", function(event){
+        newcell.childNodes[0].addEventListener("click", function (event) {
           $(this).closest('tr').remove();
         });
         break;
@@ -292,12 +288,47 @@ function addRow(tableID) {
   }
 }
 
+function validateDate(date) {
+  var dateSplit = date.split(".");
+  if (dateSplit.length != 2 || isNaN(dateSplit[0]) || isNaN(dateSplit[1])) {
+    return false;
+  }
+  var day = parseInt(dateSplit[0]);
+  var month = parseInt(dateSplit[1]);
+  if ((month == 2 && day > 29)
+    || month > 12
+    || month < 1
+    || day < 1
+    || (month % 2 == 0 && month < 8 && day > 30)
+    || (month % 2 == 1 && month < 8 && day > 31)
+    || (month % 2 == 0 && month > 7 && day > 31)
+    || (month % 2 == 1 && month > 7 && day > 30)
+  ) {
+    return false;
+  }
+  return true
+}
+
+function hideError(hideError, errorMsg, elementId) {
+  var elem = document.getElementById(elementId)
+  if(hideError) {
+    elem.style.display = "none";
+  } else {
+    elem.textContent = errorMsg;
+    elem.style.display = "block";
+  }
+}
+
 function saveWords() {
   var table = document.getElementById("word-config");
   var data = new Array();
   var i = 0;
+  var validDate = true;
+  var invalidDate = "";
+  var validLeds = true;
+  var invalidLeds = "";
   for (let row of table.rows) {
-    if (i === 0) {
+    if (i < 2) {
       ++i;
       continue
     }
@@ -308,38 +339,66 @@ function saveWords() {
       if (content === undefined)
         continue
 
-      switch (content.type) {
-        case "text":
-          jsonContent["words"] = content.value;
+      switch (content.id) {
+        case "leds":
+          leds = content.value.split(",");
+          if (leds.length == 1 && leds[0] === "") {
+            validLeds = false;
+            break;
+          }
+          for (let j of leds) {
+            if (j === "" || isNaN(j) || parseInt(j) < 1) {
+              validLeds = false;
+              invalidLeds = content.value;
+              break;
+            }
+          }
+          jsonContent["leds"] = leds.map(element => {
+            return parseInt(element);
+          });
           break;
         case "color":
           jsonContent["color"] = hexToColor(content.value);
           break;
-        case "checkbox":
+        case "enable":
           jsonContent["enable"] = content.checked;
           break;
-        case "select-one":
+        case "when":
           jsonContent["when"] = content.options[content.selectedIndex].text;
           break;
         case "date":
-          var dateVal = new Date(content.value);
-          jsonContent["date"] = {};
-          jsonContent["date"]["valid"] = false;
-          if (dateVal instanceof Date && !isNaN(dateVal)) {
-            jsonContent["date"] = {"day": dateVal.getDate(), "month": dateVal.getMonth() + 1};
-            jsonContent["date"]["valid"] = true;
+          if (!validateDate(content.value)) {
+            validDate = false;
+            invalidDate = content.value;
+            break;
           }
+          var dateSplit = content.value.split(".");
+          jsonContent["date"] = { "day": parseInt(dateSplit[0]), "month": parseInt(dateSplit[1]) };
           break;
         default:
-          if (i === 1)
-            jsonContent["words"] = "TIME";
-
+          break;
       }
     }
     data.push(jsonContent);
     ++i;
   }
-  websocket.send("wordConfig=" + JSON.stringify(data));
+
+  hideError(validDate, "Error in date: " + invalidDate, "dateError");
+  hideError(validLeds, "Error in LEDs: " + invalidLeds, "ledError");
+  console.log(data)
+
+  if (validDate && validLeds) {
+    websocket.send("wordConfig=" + JSON.stringify(data));
+  }
 }
 
-createTable(letters["clock"])
+function setTitles(title1, title2) {
+  document.getElementById("title1").innerHTML = title1
+  document.getElementById("title2").innerHTML = title2
+}
+
+createTable(letters["clock"]);
+
+setTitles(title1, title2);
+
+

@@ -46,6 +46,12 @@ table, th, td{
   width: 100%;
 }
 
+.errorMessage {
+  color: red;
+  margin-top: 0px;
+  margin-bottom: 10px;
+}
+
 .slidecontainer {
   width: 100%;
 }
@@ -111,4 +117,3 @@ table, th, td{
   border: 1px solid rgb(201, 201, 201);
   border-collapse: collapse;
 }
-
