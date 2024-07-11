@@ -5,17 +5,12 @@
 
 #define JSON_SETTINGS_SIZE 2048
 
-
 enum class LedWiring {
   ZIGZAG,
   MATRIX,
 };
 
-enum LedConfigWhen {
-  ALWAYS,
-  DATE,
-  UNDEFINED
-};
+enum LedConfigWhen { ALWAYS, DATE, UNDEFINED };
 
 class Settings {
 public:

@@ -27,9 +27,7 @@ Settings::Settings(LedWiring ledWiring) {
   this->ledwiring = ledWiring;
 }
 
-LedWiring Settings::getLedWiring() {
-  return this->ledwiring;
-}
+LedWiring Settings::getLedWiring() { return this->ledwiring; }
 
 void Settings::setUseDialect(bool useDialect) {
   settings["switchDialect"] = useDialect;
@@ -69,9 +67,7 @@ void Settings::setUtcHourOffset(sint8_t offset) {
 
 sint8_t Settings::getUtcHourOffset() { return settings["utcTimeOffset"]; }
 
-JsonArray Settings::getWordConfig() {
-  return settings["wordConfig"];
-}
+JsonArray Settings::getWordConfig() { return settings["wordConfig"]; }
 
 void Settings::setWordConfig(String &wordConfig) {
   StaticJsonDocument<1024> config;
@@ -94,7 +90,9 @@ void Settings::setWordConfig(String &wordConfig) {
   Serial.println(settings.memoryUsage());
 }
 
-COLOR_RGB getColor(JsonArray color) { return COLOR_RGB{color[0], color[1], color[2]}; }
+COLOR_RGB getColor(JsonArray color) {
+  return COLOR_RGB{color[0], color[1], color[2]};
+}
 
 void Settings::setColor(String &rgbColor, const char *key) {
   StaticJsonDocument<64> config;
@@ -116,9 +114,7 @@ COLOR_RGB Settings::getBackgroundColor() {
   return COLOR_RGB{0, 0, 0};
 }
 
-COLOR_RGB Settings::getTimeColor() {
-  return getColor(settings["timeColor"]);
-}
+COLOR_RGB Settings::getTimeColor() { return getColor(settings["timeColor"]); }
 
 void Settings::toJsonDoc(JsonObject &json) {
   json = settings.as<JsonObject>();
