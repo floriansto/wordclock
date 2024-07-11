@@ -10,6 +10,13 @@ enum class LedWiring {
   ZIGZAG,
   MATRIX,
 };
+
+enum LedConfigWhen {
+  ALWAYS,
+  DATE,
+  UNDEFINED
+};
+
 class Settings {
 public:
   Settings(LedWiring ledWiring);
@@ -31,6 +38,7 @@ public:
   void setColor(String &rgbColor, const char *key);
   COLOR_RGB getBackgroundColor();
   void setWordConfig(String &wordConfig);
+  JsonArray getWordConfig();
   COLOR_RGB getTimeColor();
   String getLangKey();
   LedWiring getLedWiring();

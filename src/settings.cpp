@@ -69,6 +69,10 @@ void Settings::setUtcHourOffset(sint8_t offset) {
 
 sint8_t Settings::getUtcHourOffset() { return settings["utcTimeOffset"]; }
 
+JsonArray Settings::getWordConfig() {
+  return settings["wordConfig"];
+}
+
 void Settings::setWordConfig(String &wordConfig) {
   StaticJsonDocument<1024> config;
 
@@ -86,8 +90,7 @@ void Settings::setWordConfig(String &wordConfig) {
     settings["wordConfig"].add(value);
   }
 
-  serializeJsonPretty(settings, Serial);
-  Serial.print("Settings Memory: ");
+  Serial.println("Settings Memory: ");
   Serial.println(settings.memoryUsage());
 }
 

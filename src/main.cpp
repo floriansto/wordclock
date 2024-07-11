@@ -81,7 +81,7 @@ void printColor(CRGB *color) {
  * The leds in the configuration file are numbered like you
  * read a book: Top left is zero, after the first row begin
  * the next row on the left again.
-*/
+ */
 u_int16_t mapLedIndex(u_int16_t led) {
   /* Map led index depending on the wiring of the led strip*/
   switch (settings->getLedWiring()) {
@@ -109,10 +109,14 @@ void setLeds() {
   u_int16_t led;
   CRGB timeColorRgb = timeColor;
   CRGB backgroundRgb = background;
+  CRGB customColorRgb;
   bool timeLeds[NUMPIXELS];
+  bool customColor[NUMPIXELS];
+  TIME time;
 
   langKey = settings->getLangKey();
   memset(timeLeds, false, sizeof(timeLeds));
+  memset(customColor, false, sizeof(customColor));
 
   for (u_int16_t i = 0; i < stack->getSize(); ++i) {
     /* Get the word key for each stack element */
@@ -136,9 +140,39 @@ void setLeds() {
     }
   }
 
+  time = getTime(&rtc, &timeClient, wifiConnected);
+  for (JsonVariant setting : settings->getWordConfig()) {
+    if (!setting["enable"]) {
+      continue;
+    }
+
+    if (setting["when"] == int(DATE) &&
+        (!time.valid || time.day != setting["date"]["day"].as<uint16_t>() ||
+         time.month != setting["date"]["month"].as<uint16_t>())) {
+      continue;
+    }
+
+    for (uint16_t i = 0; i < setting["leds"].size(); ++i) {
+      led = mapLedIndex(setting["leds"][i].as<uint16_t>() - 1);
+      if (timeLeds[led]) {
+        continue;
+      }
+      customColor[led] = true;
+      customColorRgb = COLOR_RGB(setting["color"][0], setting["color"][1],
+                                 setting["color"][2]);
+
+      if (newColor[led] == customColorRgb) {
+        continue;
+      }
+      newColor[led] = rgbToHex(customColorRgb);
+      oldColor[led] = leds[led];
+      interpolationTime[led] = 0.0;
+    }
+  }
+
   /* Fill all non time relevant leds with the background color */
   for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
-    if (timeLeds[i]) {
+    if (timeLeds[i] || customColor[i]) {
       continue;
     }
     if (newColor[i] == backgroundRgb) {
@@ -218,7 +252,6 @@ void notifyClients() {
   updateSettings();
   settings->saveSettings();
   setLeds();
-  // showTime(settings->getTimeColor(), settings->getBackgroundColor());
 }
 
 void getLedColorToWeb(JsonObject &json) {
@@ -457,6 +490,8 @@ void setup() {
   } else {
     Serial.println("Configportal at 192.168.4.1 running");
   }
+  setLeds();
+  FastLED.show();
 }
 
 /* Check summertime every hour */
