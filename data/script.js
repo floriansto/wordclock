@@ -146,12 +146,7 @@ function setTable(myObj, key) {
           content.checked = i["enable"];
           break;
         case "when":
-          for (var j = 0; j < content.options.length; ++j) {
-            if (content.options[j].text === i["when"]) {
-              content.selectedIndex = j;
-              break;
-            }
-          }
+          content.selectedIndex = i["when"];
           break;
         case "date":
           if (i["date"]["day"] == null || i["date"]["month"] == null) {
@@ -385,8 +380,8 @@ function saveWords() {
           jsonContent["enable"] = content.checked;
           break;
         case "when":
-          jsonContent["when"] = content.options[content.selectedIndex].text;
-          if (jsonContent["when"] == "Always") {
+          jsonContent["when"] = content.selectedIndex;
+          if (content.options[content.selectedIndex].text == "Always") {
             useDate = false
           }
           break;
