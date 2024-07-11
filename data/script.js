@@ -93,6 +93,82 @@ function convertRGBtoHex(red, green, blue) {
   return "#" + colorToHex(red) + colorToHex(green) + colorToHex(blue);
 }
 
+function setTable(myObj, key) {
+  var table = document.getElementById("word-config");
+  var counter = 0;
+  var initialTableRows = table.rows.length - 2
+  var rowsToRemove = 0;
+
+  if (initialTableRows > myObj[key].length) {
+    var rowsToRemove = initialTableRows - myObj[key].length;
+  }
+
+  console.log("Table rows: " + initialTableRows)
+  console.log("Rows to remove: " + rowsToRemove);
+  for (var i = 0; i < rowsToRemove; ++i) {
+    let row = table.rows[table.rows.length - 1];
+    if (row === undefined) {
+      continue
+    }
+    console.log("Remove row: " + i);
+    console.log("Table rows: " + table.rows.length)
+    console.log(row)
+    row.remove();
+  }
+
+  counter = 0
+  for (let i of myObj[key]) {
+    if (counter >= initialTableRows) {
+      addRow("word-config");
+      console.log("Add Row");
+    }
+
+    let row = table.rows[counter + 2]
+    if (row === undefined) {
+      console.log("Row " + counter + 2 + " does not exist");
+      continue;
+    }
+
+    for (let cell of row.cells) {
+      let content = cell.childNodes[0];
+
+      if (content === undefined)
+        continue
+
+      switch (content.id) {
+        case "leds":
+          content.value = i["leds"].toString();
+          break;
+        case "color":
+          content.value = convertRGBtoHex(i["color"][0], i["color"][1], i["color"][2]);
+          break;
+        case "enable":
+          content.checked = i["enable"];
+          break;
+        case "when":
+          for (var j = 0; j < content.options.length; ++j) {
+            if (content.options[j].text === i["when"]) {
+              content.selectedIndex = j;
+              break;
+            }
+          }
+          break;
+        case "date":
+          if (i["date"]["day"] == null || i["date"]["month"] == null) {
+            content.value = "";
+          } else {
+            content.value = i["date"]["day"] + "." + i["date"]["month"];
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    ++counter;
+  }
+  return;
+}
+
 function onMessage(event) {
   if (event.data === "null") {
     console.log("Received data is null");
@@ -131,63 +207,7 @@ function onMessage(event) {
     }
 
     if (key === "wordConfig") {
-      var table = document.getElementById("word-config");
-
-      var counter = 0;
-      for (let row of table.rows) {
-        if (counter < 2) {
-          ++counter;
-          continue
-        }
-        console.log("Remove row");
-        row.remove();
-        ++counter;
-      }
-
-      console.log(myObj[key]);
-
-      counter = 0
-      for (let i of myObj[key]) {
-        addRow("word-config");
-        console.log("Add Row");
-        console.log(i);
-
-        let row = table.rows[counter + 2]
-        for (let cell of row.cells) {
-          let content = cell.childNodes[0];
-
-          if (content === undefined)
-            continue
-
-          switch (content.id) {
-            case "leds":
-              console.log(i["leds"].toString());
-              content.value = i["leds"].toString();
-              break;
-            case "color":
-              content.value = convertRGBtoHex(i["color"][0], i["color"][1], i["color"][2]);
-              break;
-            case "enable":
-              content.checked = i["enable"];
-              break;
-            case "when":
-              for (var j = 0; j < content.options.length; ++j) {
-                if (content.options[j].text === i["when"]) {
-                  content.selectedIndex = j;
-                  break;
-                }
-              }
-              break;
-            case "date":
-              content.value = i["date"]["day"] + "." + i["date"]["month"];
-              break;
-            default:
-              break;
-
-          }
-        }
-        ++counter;
-      }
+      setTable(myObj, key);
     }
 
     if (key === "activeLeds") {
@@ -311,7 +331,7 @@ function validateDate(date) {
 
 function hideError(hideError, errorMsg, elementId) {
   var elem = document.getElementById(elementId)
-  if(hideError) {
+  if (hideError) {
     elem.style.display = "none";
   } else {
     elem.textContent = errorMsg;
