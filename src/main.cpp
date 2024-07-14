@@ -95,6 +95,16 @@ u_int16_t mapLedIndex(u_int16_t led) {
   }
 }
 
+bool isSettingActive(JsonVariant &setting) {
+  TIME time = getTime(&rtc, &timeClient, wifiConnected);
+
+  return setting["enable"] &&
+         (setting["when"] == int(ALWAYS) ||
+          (setting["when"] == int(DATE) &&
+           (time.valid && time.day == setting["date"]["day"].as<uint16_t>() &&
+            time.month == setting["date"]["month"].as<uint16_t>())));
+}
+
 /**
  * Set new target and start led colors for a given time
  */
@@ -112,43 +122,49 @@ void setLeds() {
   CRGB customColorRgb;
   bool timeLeds[NUMPIXELS];
   bool customColor[NUMPIXELS];
+  bool showTime = true;
   TIME time;
 
   langKey = settings->getLangKey();
   memset(timeLeds, false, sizeof(timeLeds));
   memset(customColor, false, sizeof(customColor));
 
-  for (u_int16_t i = 0; i < stack->getSize(); ++i) {
-    /* Get the word key for each stack element */
-    if (!stack->get(&elem, i)) {
-      error = Error::TIMESTACK_GET_ELEM_FAILED;
-      return;
+  for (JsonVariant setting : settings->getWordConfig()) {
+    if (!isSettingActive(setting)) {
+      continue;
     }
-    json_key_from_state(elem.state);
+    if (!setting["useTime"]) {
+      showTime = false;
+    }
+  }
 
-    /* Get the active pixels for the current word */
-    wordPixels = words[wordKey][langKey]["pixels"].as<JsonArray>();
-    /* Set the color for each active pixel */
-    for (JsonVariant pixel : wordPixels) {
-      led = mapLedIndex(pixel.as<u_int16_t>());
-      timeLeds[led] = true;
-      if (newColor[led] != timeColorRgb) {
-        oldColor[led] = leds[led];
-        interpolationTime[led] = 0.0;
+  if (showTime) {
+    for (u_int16_t i = 0; i < stack->getSize(); ++i) {
+      /* Get the word key for each stack element */
+      if (!stack->get(&elem, i)) {
+        error = Error::TIMESTACK_GET_ELEM_FAILED;
+        return;
       }
-      newColor[led] = timeColor;
+      json_key_from_state(elem.state);
+
+      /* Get the active pixels for the current word */
+      wordPixels = words[wordKey][langKey]["pixels"].as<JsonArray>();
+      /* Set the color for each active pixel */
+      for (JsonVariant pixel : wordPixels) {
+        led = mapLedIndex(pixel.as<u_int16_t>());
+        timeLeds[led] = true;
+        if (newColor[led] != timeColorRgb) {
+          oldColor[led] = leds[led];
+          interpolationTime[led] = 0.0;
+        }
+        newColor[led] = timeColor;
+      }
     }
   }
 
   time = getTime(&rtc, &timeClient, wifiConnected);
   for (JsonVariant setting : settings->getWordConfig()) {
-    if (!setting["enable"]) {
-      continue;
-    }
-
-    if (setting["when"] == int(DATE) &&
-        (!time.valid || time.day != setting["date"]["day"].as<uint16_t>() ||
-         time.month != setting["date"]["month"].as<uint16_t>())) {
+    if (!isSettingActive(setting)) {
       continue;
     }
 

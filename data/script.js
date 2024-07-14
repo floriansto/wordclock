@@ -145,6 +145,9 @@ function setTable(myObj, key) {
         case "enable":
           content.checked = i["enable"];
           break;
+        case "useTime":
+          content.checked = i["useTime"];
+          break;
         case "when":
           content.selectedIndex = i["when"];
           break;
@@ -262,18 +265,21 @@ function addRow(tableID) {
         newcell.innerHTML = '<td class="word_td"><input type="checkbox", id="enable"></td>';
         break;
       case 1:
-        newcell.innerHTML = '<td class="word_td"><input type="text", id="leds"></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="checkbox", id="useTime"></td>';
         break;
       case 2:
-        newcell.innerHTML = '<td class="word_td"><input type="color", id="color"></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="text", id="leds"></td>';
         break;
       case 3:
-        newcell.innerHTML = '<td class="word_td"><select name="When", id="when"><option value="always">Always</option><option value="date">Date</option></select></td>';
+        newcell.innerHTML = '<td class="word_td"><input type="color", id="color"></td>';
         break;
       case 4:
-        newcell.innerHTML = '<td class="word_td"><input type="text", id="date"></td>';
+        newcell.innerHTML = '<td class="word_td"><select name="When", id="when"><option value="always">Always</option><option value="date">Date</option></select></td>';
         break;
       case 5:
+        newcell.innerHTML = '<td class="word_td"><input type="text", id="date"></td>';
+        break;
+      case 6:
         newcell.innerHTML = '<td class="word_td"><button type="button">Delete</button></td>';
         break;
       default:
@@ -378,6 +384,9 @@ function saveWords() {
           break;
         case "enable":
           jsonContent["enable"] = content.checked;
+          break;
+        case "useTime":
+          jsonContent["useTime"] = content.checked;
           break;
         case "when":
           jsonContent["when"] = content.selectedIndex;
