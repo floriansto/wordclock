@@ -228,6 +228,7 @@ function onMessage(event) {
 function createTable(tableData) {
   var table = document.getElementById('preview');
   var tableBody = document.createElement('tbody');
+  var counter = 1;
 
   tableData.forEach(function (rowData) {
     var row = document.createElement('tr');
@@ -236,6 +237,7 @@ function createTable(tableData) {
     rowData.forEach(function (cellData) {
       var cell = document.createElement('td');
       cell.classList.add("td_preview")
+      cell.setAttribute("data-tag", counter++)
       cell.appendChild(document.createTextNode(cellData));
       row.appendChild(cell);
     });

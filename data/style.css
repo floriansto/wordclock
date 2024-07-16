@@ -102,10 +102,21 @@ table, th, td{
 }
 
 .td_preview {
+  position: relative;
   text-align: center;
   vertical-align: center;
   background-color: rgb(92, 92, 92);
   font-weight: 999;
+}
+
+.td_preview::after {
+  content: attr(data-tag);
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: rgb(56, 56, 56);
+  color: rgb(167, 167, 167);
+  font-size: 9px;
 }
 
 .word_table, .word_th, .word_td{
