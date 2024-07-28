@@ -1,6 +1,8 @@
 
 var gateway = `ws://${window.location.hostname}/ws`;
 var websocket;
+var maxBits = 32;
+var allowSavingWordConfig = true;
 window.addEventListener('load', onload);
 
 setInterval(function () {
@@ -72,7 +74,6 @@ function intToRgbColor(intValue) {
 
 function processColorPicker(element) {
   var colorValue = document.getElementById(element.id).value;
-  console.log(colorValue)
   var rgb = hexToColor(colorValue);
   websocket.send(element.id + "=" + JSON.stringify(rgb));
 }
@@ -99,20 +100,19 @@ function setTable(myObj, key) {
   var initialTableRows = table.rows.length - 2
   var rowsToRemove = 0;
 
+  if (myObj == null || myObj[key] == null) {
+    return;
+  }
+
   if (initialTableRows > myObj[key].length) {
     var rowsToRemove = initialTableRows - myObj[key].length;
   }
 
-  console.log("Table rows: " + initialTableRows)
-  console.log("Rows to remove: " + rowsToRemove);
   for (var i = 0; i < rowsToRemove; ++i) {
     let row = table.rows[table.rows.length - 1];
     if (row === undefined) {
       continue
     }
-    console.log("Remove row: " + i);
-    console.log("Table rows: " + table.rows.length)
-    console.log(row)
     row.remove();
   }
 
@@ -120,12 +120,10 @@ function setTable(myObj, key) {
   for (let i of myObj[key]) {
     if (counter >= initialTableRows) {
       addRow("word-config");
-      console.log("Add Row");
     }
 
     let row = table.rows[counter + 2]
     if (row === undefined) {
-      console.log("Row " + counter + 2 + " does not exist");
       continue;
     }
 
@@ -137,7 +135,20 @@ function setTable(myObj, key) {
 
       switch (content.id) {
         case "leds":
-          content.value = i["leds"].toString();
+          var ledString = "";
+          var index = 0;
+          for (let j of i["leds"]) {
+            for (var k = 0; k < maxBits; ++k) {
+              if ((((1 << k) & j) >>> 0) > 0) {
+                if (ledString !== "") {
+                  ledString += ",";
+                }
+                ledString += ((k + maxBits * index) + 1)
+              }
+            }
+            ++index;
+          }
+          content.value = ledString;
           break;
         case "color":
           content.value = convertRGBtoHex(i["color"][0], i["color"][1], i["color"][2]);
@@ -193,8 +204,6 @@ function onMessage(event) {
       }
     }
 
-    console.log("Got key " + key);
-
     if (key == "timeColor") {
       var color = myObj[key];
       timeColor = convertRGBtoHex(color[0], color[1], color[2]);
@@ -202,6 +211,7 @@ function onMessage(event) {
 
     if (key === "wordTime") {
       document.getElementById(key).innerHTML = myObj[key];
+      allowSavingWordConfig = true;
     }
 
     if (key === "wordConfig") {
@@ -344,21 +354,29 @@ function hideError(hideError, errorMsg, elementId) {
 
 function saveWords() {
   var table = document.getElementById("word-config");
-  var data = new Array();
   var i = 0;
+  var useDate = true;
+  var index = 0;
+
+  if (allowSavingWordConfig === false) {
+    console.log("Not allowed to save words")
+    return;
+  }
+
   var validDate = true;
   var invalidDate = "";
   var validLeds = true;
   var invalidLeds = "";
-  var useDate = true;
+
   for (let row of table.rows) {
     if (i < 2) {
       ++i;
       continue
     }
-    let jsonContent = {};
+    var jsonContent = {};
     for (let cell of row.cells) {
       let content = cell.childNodes[0];
+      var ledHex = [];
 
       if (content === undefined)
         continue
@@ -377,9 +395,22 @@ function saveWords() {
               break;
             }
           }
-          jsonContent["leds"] = leds.map(element => {
-            return parseInt(element);
-          });
+          for (let j of leds) {
+            var led = parseInt(j) - 1;
+            var ledIndex = Math.floor(led/maxBits);
+            if (isNaN(ledHex[ledIndex])) {
+              ledHex[ledIndex] = 0;
+            }
+            ledHex[ledIndex] += Math.pow(2, led - ledIndex * maxBits)
+          }
+          var k = 0;
+          for (let j of ledHex) {
+            if (j === undefined) {
+              ledHex[k] = 0;
+            }
+            ++k;
+          }
+          jsonContent["leds"] = ledHex
           break;
         case "color":
           jsonContent["color"] = hexToColor(content.value);
@@ -409,17 +440,19 @@ function saveWords() {
           break;
       }
     }
-    data.push(jsonContent);
     ++i;
-  }
+    hideError(validDate, "Error in date: " + invalidDate, "dateError");
+    hideError(validLeds, "Error in LEDs: " + invalidLeds, "ledError");
 
-  hideError(validDate, "Error in date: " + invalidDate, "dateError");
-  hideError(validLeds, "Error in LEDs: " + invalidLeds, "ledError");
-  console.log(data)
-
-  if (validDate && validLeds) {
-    websocket.send("wordConfig=" + JSON.stringify(data));
+    if (validDate && validLeds) {
+      if (index === 0) {
+        websocket.send("clearWordConfig");
+      }
+      websocket.send("wordConfig=" + JSON.stringify(jsonContent));
+      ++index;
+    }
   }
+  allowSavingWordConfig = false;
 }
 
 function setTitles(title1, title2) {

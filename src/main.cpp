@@ -169,20 +169,26 @@ void setLeds() {
     }
 
     for (uint16_t i = 0; i < setting["leds"].size(); ++i) {
-      led = mapLedIndex(setting["leds"][i].as<uint16_t>() - 1);
-      if (timeLeds[led]) {
-        continue;
-      }
-      customColor[led] = true;
-      customColorRgb = COLOR_RGB(setting["color"][0], setting["color"][1],
-                                 setting["color"][2]);
+      for (uint16_t j = 0; j < 32; ++j)
+      {
+        if (((1 << j) & setting["leds"][i].as<uint32_t>()) == 0) {
+          continue;
+        }
+        led = mapLedIndex(j + (32 * i));
+        if (timeLeds[led]) {
+          continue;
+        }
+        customColor[led] = true;
+        customColorRgb = COLOR_RGB(setting["color"][0], setting["color"][1],
+                                   setting["color"][2]);
 
-      if (newColor[led] == customColorRgb) {
-        continue;
+        if (newColor[led] == customColorRgb) {
+          continue;
+        }
+        newColor[led] = rgbToHex(customColorRgb);
+        oldColor[led] = leds[led];
+        interpolationTime[led] = 0.0;
       }
-      newColor[led] = rgbToHex(customColorRgb);
-      oldColor[led] = leds[led];
-      interpolationTime[led] = 0.0;
     }
   }
 
@@ -285,6 +291,10 @@ void getTimeToWeb(JsonObject &json) {
   getLedColorToWeb(json);
 }
 
+void continueWordConfig(JsonObject &json) {
+  json["continueWordConfig"] = true;
+}
+
 void getSettingsToWeb(JsonObject &json) { settings->toJsonDoc(json); }
 
 void sendJson(void function(JsonObject &json)) {
@@ -363,6 +373,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       settings->setWordConfig(wordConfig);
       notifyClients();
       sendJson(getTimeToWeb);
+      sendJson(continueWordConfig);
+    }
+    if (message.indexOf("clearWordConfig") == 0) {
+      Serial.println("Clear word config");
+      settings->clearWordConfig();
     }
 
     if (strcmp((char *)data, "getValues") == 0) {

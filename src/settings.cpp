@@ -69,25 +69,27 @@ sint8_t Settings::getUtcHourOffset() { return settings["utcTimeOffset"]; }
 
 JsonArray Settings::getWordConfig() { return settings["wordConfig"]; }
 
+void Settings::clearWordConfig() {
+  settings["wordConfig"].clear();
+  settings.garbageCollect();
+}
+
 void Settings::setWordConfig(String &wordConfig) {
   StaticJsonDocument<1024> config;
 
   DeserializationError error = deserializeJson(config, wordConfig);
   if (error) {
-    Serial.println("Failed to read settings.json using default configuration");
+    Serial.println("setWordConfig: Failed to read json");
     Serial.println(error.f_str());
     return;
   }
 
-  settings["wordConfig"].clear();
-  settings.garbageCollect();
+  settings["wordConfig"].add(config);
 
-  for (JsonVariant value : config.as<JsonArray>()) {
-    settings["wordConfig"].add(value);
-  }
-
-  Serial.println("Settings Memory: ");
+  Serial.print("Settings Memory: ");
   Serial.println(settings.memoryUsage());
+  Serial.print("Sizeof Settings: ");
+  Serial.println(sizeof(this->settings));
 }
 
 COLOR_RGB getColor(JsonArray color) {
@@ -99,7 +101,7 @@ void Settings::setColor(String &rgbColor, const char *key) {
 
   DeserializationError error = deserializeJson(config, rgbColor);
   if (error) {
-    Serial.println("Failed to read settings.json using default configuration");
+    Serial.println("setColor: Failed to read json");
     Serial.println(error.f_str());
     return;
   }

@@ -37,6 +37,7 @@ public:
   COLOR_RGB getTimeColor();
   String getLangKey();
   LedWiring getLedWiring();
+  void clearWordConfig();
 
 private:
   StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
