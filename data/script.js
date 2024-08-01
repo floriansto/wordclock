@@ -3,6 +3,7 @@ var gateway = `ws://${window.location.hostname}/ws`;
 var websocket;
 var maxBits = 32;
 var allowSavingWordConfig = true;
+var nextWordIndex = 0;
 window.addEventListener('load', onload);
 
 setInterval(function () {
@@ -183,7 +184,12 @@ function onMessage(event) {
     console.log("Received data is null");
     return
   }
-  var myObj = JSON.parse(event.data);
+  try {
+    var myObj = JSON.parse(event.data);
+  } catch (e) {
+    console.log(event.data)
+    console.error(e);
+  }
   var keys = Object.keys(myObj);
   var timeColor = "#FF0000";
 
@@ -211,7 +217,6 @@ function onMessage(event) {
 
     if (key === "wordTime") {
       document.getElementById(key).innerHTML = myObj[key];
-      allowSavingWordConfig = true;
     }
 
     if (key === "wordConfig") {
@@ -219,6 +224,7 @@ function onMessage(event) {
     }
 
     if (key === "activeLeds") {
+      console.log(myObj[key]);
       var table = document.getElementById("preview");
 
       var j = 0;
@@ -231,6 +237,11 @@ function onMessage(event) {
           cell.style.color = convertRGBtoHex(rgb[0], rgb[1], rgb[2]);
         }
       }
+    }
+
+    if (key === "continueWordConfig") {
+      allowSavingWordConfig = true;
+      saveWords(nextWordIndex);
     }
   }
 }
@@ -352,14 +363,19 @@ function hideError(hideError, errorMsg, elementId) {
   }
 }
 
-function saveWords() {
+function saveWords(rowIndex) {
   var table = document.getElementById("word-config");
-  var i = 0;
   var useDate = true;
-  var index = 0;
 
   if (allowSavingWordConfig === false) {
     console.log("Not allowed to save words")
+    return;
+  }
+
+  if (rowIndex >= table.rows.length) {
+    allowSavingWordConfig = true;
+    nextWordIndex = 0;
+    websocket.send("finishedWordConfig");
     return;
   }
 
@@ -368,91 +384,86 @@ function saveWords() {
   var validLeds = true;
   var invalidLeds = "";
 
-  for (let row of table.rows) {
-    if (i < 2) {
-      ++i;
+  row = table.rows[rowIndex];
+
+  var jsonContent = {};
+  for (let cell of row.cells) {
+    let content = cell.childNodes[0];
+    var ledHex = [];
+
+    if (content === undefined)
       continue
-    }
-    var jsonContent = {};
-    for (let cell of row.cells) {
-      let content = cell.childNodes[0];
-      var ledHex = [];
 
-      if (content === undefined)
-        continue
-
-      switch (content.id) {
-        case "leds":
-          leds = content.value.split(",");
-          if (leds.length == 1 && leds[0] === "") {
+    switch (content.id) {
+      case "leds":
+        leds = content.value.split(",");
+        if (leds.length == 1 && leds[0] === "") {
+          validLeds = false;
+          break;
+        }
+        for (let j of leds) {
+          if (j === "" || isNaN(j) || parseInt(j) < 1) {
             validLeds = false;
+            invalidLeds = content.value;
             break;
           }
-          for (let j of leds) {
-            if (j === "" || isNaN(j) || parseInt(j) < 1) {
-              validLeds = false;
-              invalidLeds = content.value;
-              break;
-            }
+        }
+        for (let j of leds) {
+          var led = parseInt(j) - 1;
+          var ledIndex = Math.floor(led/maxBits);
+          if (isNaN(ledHex[ledIndex])) {
+            ledHex[ledIndex] = 0;
           }
-          for (let j of leds) {
-            var led = parseInt(j) - 1;
-            var ledIndex = Math.floor(led/maxBits);
-            if (isNaN(ledHex[ledIndex])) {
-              ledHex[ledIndex] = 0;
-            }
-            ledHex[ledIndex] += Math.pow(2, led - ledIndex * maxBits)
+          ledHex[ledIndex] += Math.pow(2, led - ledIndex * maxBits)
+        }
+        var k = 0;
+        for (let j of ledHex) {
+          if (j === undefined) {
+            ledHex[k] = 0;
           }
-          var k = 0;
-          for (let j of ledHex) {
-            if (j === undefined) {
-              ledHex[k] = 0;
-            }
-            ++k;
-          }
-          jsonContent["leds"] = ledHex
+          ++k;
+        }
+        jsonContent["leds"] = ledHex
+        break;
+      case "color":
+        jsonContent["color"] = hexToColor(content.value);
+        break;
+      case "enable":
+        jsonContent["enable"] = content.checked;
+        break;
+      case "useTime":
+        jsonContent["useTime"] = content.checked;
+        break;
+      case "when":
+        jsonContent["when"] = content.selectedIndex;
+        if (content.options[content.selectedIndex].text == "Always") {
+          useDate = false
+        }
+        break;
+      case "date":
+        if (!validateDate(content.value) && (useDate || (!useDate && content.value != ""))) {
+          validDate = false;
+          invalidDate = content.value;
           break;
-        case "color":
-          jsonContent["color"] = hexToColor(content.value);
-          break;
-        case "enable":
-          jsonContent["enable"] = content.checked;
-          break;
-        case "useTime":
-          jsonContent["useTime"] = content.checked;
-          break;
-        case "when":
-          jsonContent["when"] = content.selectedIndex;
-          if (content.options[content.selectedIndex].text == "Always") {
-            useDate = false
-          }
-          break;
-        case "date":
-          if (!validateDate(content.value) && (useDate || (!useDate && content.value != ""))) {
-            validDate = false;
-            invalidDate = content.value;
-            break;
-          }
-          var dateSplit = content.value.split(".");
-          jsonContent["date"] = { "day": parseInt(dateSplit[0]), "month": parseInt(dateSplit[1]) };
-          break;
-        default:
-          break;
-      }
-    }
-    ++i;
-    hideError(validDate, "Error in date: " + invalidDate, "dateError");
-    hideError(validLeds, "Error in LEDs: " + invalidLeds, "ledError");
-
-    if (validDate && validLeds) {
-      if (index === 0) {
-        websocket.send("clearWordConfig");
-      }
-      websocket.send("wordConfig=" + JSON.stringify(jsonContent));
-      ++index;
+        }
+        var dateSplit = content.value.split(".");
+        jsonContent["date"] = { "day": parseInt(dateSplit[0]), "month": parseInt(dateSplit[1]) };
+        break;
+      default:
+        break;
     }
   }
-  allowSavingWordConfig = false;
+  hideError(validDate, "Error in date: " + invalidDate, "dateError");
+  hideError(validLeds, "Error in LEDs: " + invalidLeds, "ledError");
+
+  if (validDate && validLeds) {
+    if (rowIndex === 2) {
+      websocket.send("clearWordConfig");
+    }
+    websocket.send("wordConfig=" + JSON.stringify(jsonContent));
+    allowSavingWordConfig = false;
+    nextWordIndex = rowIndex + 1
+  }
 }
 
 function setTitles(title1, title2) {
