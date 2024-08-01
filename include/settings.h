@@ -2,15 +2,14 @@
 #define __SETTINGS_H__
 
 #include "../include/color.h"
+#include "../include/wordConfig.h"
 
-#define JSON_SETTINGS_SIZE 2048
+#define MAX_WORD_CONFIGS 25
 
 enum class LedWiring {
   ZIGZAG,
   MATRIX,
 };
-
-enum LedConfigWhen { ALWAYS, DATE, UNDEFINED };
 
 class Settings {
 public:
@@ -23,25 +22,36 @@ public:
   bool getUseQuaterPast();
   void setUseBackgroundColor(bool useBackgroundColor);
   bool getUseBackgroundColor();
-  void setBrightness(int brightness);
-  int getBrightness();
+  void setBrightness(uint8_t brightness);
+  uint8_t getBrightness();
   void loadSettings();
   void saveSettings();
-  void toJsonDoc(JsonObject &json);
+  //void toJsonDoc(JsonObject &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
-  void setColor(String &rgbColor, const char *key);
+  void setTimeColor(String &rgbColor);
+  void setBackgroundColor(String &rgbColor);
   COLOR_RGB getBackgroundColor();
   void setWordConfig(String &wordConfig);
-  JsonArray getWordConfig();
+  WordConfig* getWordConfig();
   COLOR_RGB getTimeColor();
   String getLangKey();
   LedWiring getLedWiring();
   void clearWordConfig();
+  uint8_t getMaxWordConfigs();
 
 private:
-  StaticJsonDocument<JSON_SETTINGS_SIZE> settings;
+  uint8_t brightness;
+  bool useDialect;
+  bool useThreeQuater;
+  bool useQuaterPast;
+  bool useBackgroundColor;
+  COLOR_RGB backgroundColor;
+  COLOR_RGB timeColor;
+  uint8_t utcTimeOffset;
   LedWiring ledwiring;
+  WordConfig wordConfig[MAX_WORD_CONFIGS];
+  uint8_t maxWordConfigs;
 };
 
 #endif

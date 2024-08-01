@@ -23,6 +23,7 @@
 #include "../include/main.h"
 #include "../include/settings.h"
 #include "../include/timeUtils.h"
+#include "../include/wordConfig.h"
 #include "LittleFS.h"
 
 #define DEBUG 0
@@ -95,16 +96,6 @@ u_int16_t mapLedIndex(u_int16_t led) {
   }
 }
 
-bool isSettingActive(JsonVariant &setting) {
-  TIME time = getTime(&rtc, &timeClient, wifiConnected);
-
-  return setting["enable"] &&
-         (setting["when"] == int(ALWAYS) ||
-          (setting["when"] == int(DATE) &&
-           (time.valid && time.day == setting["date"]["day"].as<uint16_t>() &&
-            time.month == setting["date"]["month"].as<uint16_t>())));
-}
-
 /**
  * Set new target and start led colors for a given time
  */
@@ -124,16 +115,18 @@ void setLeds() {
   bool customColor[NUMPIXELS];
   bool showTime = true;
   TIME time;
+  WordConfig* wordConfig;
 
   langKey = settings->getLangKey();
   memset(timeLeds, false, sizeof(timeLeds));
   memset(customColor, false, sizeof(customColor));
 
-  for (JsonVariant setting : settings->getWordConfig()) {
-    if (!isSettingActive(setting)) {
+  wordConfig = settings->getWordConfig();
+  for (uint8_t k = 0; k < settings->getMaxWordConfigs(); ++k) {
+    if (!wordConfig[k].isEnabled()) {
       continue;
     }
-    if (!setting["useTime"]) {
+    if (!wordConfig[k].showTime()) {
       showTime = false;
     }
   }
@@ -163,24 +156,23 @@ void setLeds() {
   }
 
   time = getTime(&rtc, &timeClient, wifiConnected);
-  for (JsonVariant setting : settings->getWordConfig()) {
-    if (!isSettingActive(setting)) {
+  for (uint8_t k = 0; k < settings->getMaxWordConfigs(); ++k) {
+    if (!wordConfig[k].isEnabled()) {
       continue;
     }
 
-    for (uint16_t i = 0; i < setting["leds"].size(); ++i) {
-      for (uint16_t j = 0; j < 32; ++j)
+    for (uint16_t i = 0; i < MAX_LED_ENTRIES; ++i) {
+      for (uint16_t j = 0; j < BITMASK_LENGTH; ++j)
       {
-        if (((1 << j) & setting["leds"][i].as<uint32_t>()) == 0) {
+        if (((1 << j) & wordConfig[k].getLedsAt(i)) == 0) {
           continue;
         }
-        led = mapLedIndex(j + (32 * i));
+        led = mapLedIndex(j + (BITMASK_LENGTH * i));
         if (timeLeds[led]) {
           continue;
         }
         customColor[led] = true;
-        customColorRgb = COLOR_RGB(setting["color"][0], setting["color"][1],
-                                   setting["color"][2]);
+        customColorRgb = wordConfig[k].getColor();
 
         if (newColor[led] == customColorRgb) {
           continue;
@@ -272,7 +264,7 @@ String getWordTime() {
 
 void notifyClients() {
   updateSettings();
-  settings->saveSettings();
+  //settings->saveSettings();
   setLeds();
 }
 
@@ -295,7 +287,9 @@ void continueWordConfig(JsonObject &json) {
   json["continueWordConfig"] = true;
 }
 
-void getSettingsToWeb(JsonObject &json) { settings->toJsonDoc(json); }
+void getSettingsToWeb(JsonObject &json) {
+  //settings->toJsonDoc(json);
+}
 
 void sendJson(void function(JsonObject &json)) {
   DynamicJsonDocument json(4096);
@@ -349,13 +343,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
     if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
-      settings->setColor(backgroundColorStr, "backgroundColor");
+      settings->setBackgroundColor(backgroundColorStr);
       notifyClients();
       sendJson(getTimeToWeb);
     }
     if (message.indexOf("timeColor") == 0) {
       String timeColorStr = message.substring(message.indexOf("=") + 1);
-      settings->setColor(timeColorStr, "timeColor");
+      settings->setTimeColor(timeColorStr);
       notifyClients();
       sendJson(getTimeToWeb);
     }
@@ -371,9 +365,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (message.indexOf("wordConfig") == 0) {
       String wordConfig = message.substring(message.indexOf("=") + 1);
       settings->setWordConfig(wordConfig);
+      sendJson(continueWordConfig);
+    }
+    if (message.indexOf("finishedWordConfig") == 0) {
       notifyClients();
       sendJson(getTimeToWeb);
-      sendJson(continueWordConfig);
     }
     if (message.indexOf("clearWordConfig") == 0) {
       Serial.println("Clear word config");

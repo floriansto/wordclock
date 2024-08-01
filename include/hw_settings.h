@@ -5,6 +5,7 @@
 #define COL_PIXELS 14
 #define ROW_PIXELS 14
 #define NUMPIXELS (COL_PIXELS * ROW_PIXELS)
+#define BITMASK_LENGTH 32
 
 const double maxCurrentAll = 3000.0;
 const double maxCurrentPerLed = 50;
