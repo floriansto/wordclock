@@ -312,6 +312,23 @@ void sendJson(void function(JsonObject &json)) {
   ws.textAll(str);
 }
 
+bool updateTime(TIME* time) {
+  *time = getTime(&rtc, &timeClient, wifiConnected);
+
+  /* Error if time is not valid */
+  if (!time->valid) {
+    error = Error::NO_TIME;
+    return false;
+  }
+
+  /* Run the wordprocessor to update the wordtime */
+  if (!timeProcessor->update(time->hour, time->minute, time->seconds)) {
+    error = Error::TIME_TO_WORD_CONVERSION;
+    return false;
+  }
+  return true;
+}
+
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len &&
@@ -364,7 +381,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       int offset = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUtcHourOffset(offset);
       if (adjustSummertime(&rtc, &timeClient, offset, wifiConnected) != true) {
+        Serial.println("Failed to adjust time");
         error = Error::SUMMERTIME_ERROR;
+      }
+      TIME time;
+      if (updateTime(&time) == false) {
+        return;
       }
       notifyClients();
       sendJson(getTimeToWeb);
@@ -537,8 +559,8 @@ u_int32_t syncRtc = 24 * 3600 * 1000;
 unsigned long lastRtcSync = syncRtc;
 
 /* Update time every second */
-u_int32_t updateTime = 1 * 1000;
-unsigned long lastTimeUpdate = updateTime;
+u_int32_t updateTimeInterval = 1 * 1000;
+unsigned long lastTimeUpdate = updateTimeInterval;
 
 void loop() {
 
@@ -571,21 +593,11 @@ void loop() {
   wifiConnected = WiFi.status() == WL_CONNECTED;
 
   /* Get the current time */
-  if (millis() - lastTimeUpdate > updateTime) {
-    time = getTime(&rtc, &timeClient, wifiConnected);
+  if (millis() - lastTimeUpdate > updateTimeInterval) {
+    if (updateTime(&time) == false) {
+      return;
+    }
     lastTimeUpdate = millis();
-
-    /* Error if time is not valid */
-    if (!time.valid) {
-      error = Error::NO_TIME;
-      return;
-    }
-
-    /* Run the wordprocessor to update the wordtime */
-    if (!timeProcessor->update(time.hour, time.minute, time.seconds)) {
-      error = Error::TIME_TO_WORD_CONVERSION;
-      return;
-    }
   }
 
   /* Check if the summertime needs to be adjusted and if so, do so */
