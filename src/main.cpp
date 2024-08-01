@@ -264,7 +264,7 @@ String getWordTime() {
 
 void notifyClients() {
   updateSettings();
-  //settings->saveSettings();
+  settings->saveSettings();
   setLeds();
 }
 
@@ -296,7 +296,6 @@ void getSettingsToWeb(JsonObject &json) {
   json["useBackgroundColor"] = settings->getUseBackgroundColor();
   json["backgroundColor"] = rgbToHex(settings->getBackgroundColor());
   json["utcTimeOffset"] = settings->getUtcHourOffset();
-  //settings->toJsonDoc(json);
 }
 
 void sendJson(void function(JsonObject &json)) {
@@ -324,25 +323,25 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       settings->setBrightness(brightness);
       notifyClients();
     }
-    if (message.indexOf("switchDialect") == 0) {
+    if (message.indexOf("useDialect") == 0) {
       int dialect = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseDialect(dialect > 0);
       notifyClients();
       sendJson(getTimeToWeb);
     }
-    if (message.indexOf("switchThreeQuater") == 0) {
+    if (message.indexOf("useThreeQuater") == 0) {
       int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseThreeQuater(threeQuater > 0);
       notifyClients();
       sendJson(getTimeToWeb);
     }
-    if (message.indexOf("switchQuaterPast") == 0) {
+    if (message.indexOf("useQuaterPast") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseQuaterPast(quaterPast > 0);
       notifyClients();
       sendJson(getTimeToWeb);
     }
-    if (message.indexOf("switchBackgroundColor") == 0) {
+    if (message.indexOf("useBackgroundColor") == 0) {
       int useBackgroundColor =
           message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseBackgroundColor(useBackgroundColor > 0);

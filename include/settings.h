@@ -27,6 +27,8 @@ public:
   void loadSettings();
   void saveSettings();
   //void toJsonDoc(JsonObject &json);
+  void serializeBasic(JsonDocument &json);
+  void deserializeBasic(JsonDocument &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   void setTimeColor(String &rgbColor);

@@ -140,6 +140,28 @@ COLOR_RGB Settings::getTimeColor() { return this->timeColor; }
 //  return;
 //}
 
+void Settings::serializeBasic(JsonDocument &json) {
+  json["brightness"] = this->brightness;
+  json["useDialect"] = this->useDialect;
+  json["useQuaterPast"] = this->useQuaterPast;
+  json["useThreeQuater"] = this->useThreeQuater;
+  json["useBackgroundColor"] = this->useBackgroundColor;
+  json["utcTimeOffset"] = this->utcTimeOffset;
+  json["timeColor"] = rgbToHex(this->timeColor);
+  json["backgroundColor"] = rgbToHex(this->backgroundColor);
+}
+
+void Settings::deserializeBasic(JsonDocument &json) {
+  this->brightness = json["brightness"];
+  this->useDialect = json["useDialect"];
+  this->useQuaterPast = json["useQuaterPast"];
+  this->useThreeQuater = json["useThreeQuater"];
+  this->useBackgroundColor = json["useBackgroundColor"];
+  this->utcTimeOffset = json["utcTimeOffset"];
+  this->timeColor = hexToRgb(json["timeColor"]);
+  this->backgroundColor = hexToRgb(json["backgroundColor"]);
+}
+
 void Settings::saveSettings() {
   StaticJsonDocument<2048> settings;
   File file = LittleFS.open("/settings.json", "w");
@@ -148,6 +170,7 @@ void Settings::saveSettings() {
     Serial.println("settings.json not found!");
     return;
   }
+  serializeBasic(settings);
   if (serializeJson(settings, file) == 0) {
     Serial.println("Failed to save settings");
     file.close();
@@ -172,6 +195,7 @@ void Settings::loadSettings() {
     Serial.println(error.f_str());
     return;
   }
+  deserializeBasic(settings);
   Serial.println("Loaded settings");
 }
 
