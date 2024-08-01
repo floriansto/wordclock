@@ -288,6 +288,14 @@ void continueWordConfig(JsonObject &json) {
 }
 
 void getSettingsToWeb(JsonObject &json) {
+  json["brightness"] = settings->getBrightness();
+  json["useDialect"] = settings->getUseDialect();
+  json["useQuaterPast"] = settings->getUseQuaterPast();
+  json["useThreeQuater"] = settings->getUseThreeQuater();
+  json["timeColor"] = rgbToHex(settings->getTimeColor());
+  json["useBackgroundColor"] = settings->getUseBackgroundColor();
+  json["backgroundColor"] = rgbToHex(settings->getBackgroundColor());
+  json["utcTimeOffset"] = settings->getUtcHourOffset();
   //settings->toJsonDoc(json);
 }
 

@@ -42,27 +42,27 @@
 
   <div class="settingsDiv">
 
-    <p>Brightness: <span id="brightnessSliderDisplay"></span>%</p>
-    <input type="range" min="0" max="100" value="50" class="slider" id="brightnessSlider"
+    <p>Brightness: <span id="brightnessDisplay"></span>%</p>
+    <input type="range" min="0" max="100" value="50" class="slider" id="brightness"
       onchange="updateSliderBrightness(this)" align="center">
 
     <h4 align="center">Clock Settings</h4>
     <table align="center">
       <tr>
         <td>Use dialect</td>
-        <td><input id="switchDialect" type="checkbox" onclick="processCheckbox(this)"></td>
+        <td><input id="useDialect" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
         <td>Use "dreiviertel"</td>
-        <td><input id="switchThreeQuater" type="checkbox" onclick="processCheckbox(this)"></td>
+        <td><input id="useThreeQuater" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
         <td>Use "viertel nach"</td>
-        <td><input id="switchQuaterPast" type="checkbox" onclick="processCheckbox(this)"></td>
+        <td><input id="useQuaterPast" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
         <td>Enable background color</td>
-        <td><input id="switchBackgroundColor" type="checkbox" onclick="processCheckbox(this)"></td>
+        <td><input id="useBackgroundColor" type="checkbox" onclick="processCheckbox(this)"></td>
       </tr>
       <tr>
         <td>Time color</td>

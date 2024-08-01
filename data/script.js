@@ -191,7 +191,6 @@ function onMessage(event) {
     console.error(e);
   }
   var keys = Object.keys(myObj);
-  var timeColor = "#FF0000";
 
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
@@ -203,16 +202,10 @@ function onMessage(event) {
       if (elem.getAttribute("type") === "checkbox") {
         elem.checked = myObj[key];
       } else if (elem.getAttribute("type") === "color") {
-        var color = myObj[key];
-        document.getElementById(key).value = convertRGBtoHex(color[0], color[1], color[2]);
+        document.getElementById(key).value = "#" + myObj[key].toString(16);
       } else {
         document.getElementById(key).value = myObj[key];
       }
-    }
-
-    if (key == "timeColor") {
-      var color = myObj[key];
-      timeColor = convertRGBtoHex(color[0], color[1], color[2]);
     }
 
     if (key === "wordTime") {

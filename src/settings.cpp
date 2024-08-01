@@ -8,9 +8,9 @@
 
 Settings::Settings(LedWiring ledWiring) {
   this->timeColor = COLOR_RGB{252, 184, 33};
-  this->backgroundColor = COLOR_RGB{246, 245, 244};
-  this->brightness = 100;
-  this->useDialect = false;
+  this->backgroundColor = COLOR_RGB{55, 55, 55};
+  this->brightness = 50;
+  this->useDialect = true;
   this->useThreeQuater = true;
   this->useQuaterPast = true;
   this->useBackgroundColor = true;
