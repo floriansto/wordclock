@@ -135,11 +135,6 @@ COLOR_RGB Settings::getBackgroundColor() {
 
 COLOR_RGB Settings::getTimeColor() { return this->timeColor; }
 
-//void Settings::toJsonDoc(JsonObject &json) {
-//  json = settings.as<JsonObject>();
-//  return;
-//}
-
 void Settings::serializeBasic(JsonDocument &json) {
   json["brightness"] = this->brightness;
   json["useDialect"] = this->useDialect;
