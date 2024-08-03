@@ -111,7 +111,7 @@ COLOR_RGB stringToColor(String &rgbColor) {
 
   DeserializationError error = deserializeJson(config, rgbColor);
   if (error) {
-    Serial.println("setColor: Failed to read json");
+    Serial.println("setColor: Failed to read color");
     Serial.println(error.f_str());
     return COLOR_RGB{0, 0, 0};
   }
@@ -172,31 +172,32 @@ void Settings::serializeWordConfig(JsonObject &json) {
 }
 
 void Settings::saveWordConfig() {
-  DynamicJsonDocument settings(4096);
+  StaticJsonDocument<512> settings;
   JsonObject obj = settings.to<JsonObject>();
-  File file = LittleFS.open("/customWordConfig.json", "w");
+  LittleFS.remove("/customWordConfig.json");
+  File file = LittleFS.open("/customWordConfig.json", "a");
 
   if (!file) {
     Serial.println("customWordConfig.json not found!");
     return;
   }
 
-  this->serializeWordConfig(obj);
-
-  if (serializeJson(settings, file) == 0) {
-    Serial.println("Failed to save custom word config");
-    file.close();
-    return;
+  for (u_int8_t i = 0; i < this->maxWordConfigs; ++i) {
+    this->wordConfig[i].serialize(obj);
+    if (serializeJson(settings, file) == 0) {
+      Serial.println("Failed to save custom word config");
+      file.close();
+      return;
+    }
   }
 
   file.close();
   Serial.println("Saved custom word config");
-
   return;
 }
 
 void Settings::saveSettings() {
-  DynamicJsonDocument settings(1024);
+  StaticJsonDocument<512> settings;
   JsonObject obj = settings.to<JsonObject>();
   File file = LittleFS.open("/settings.json", "w");
 
@@ -219,30 +220,29 @@ void Settings::saveSettings() {
 }
 
 void Settings::loadWordConfig() {
-  StaticJsonDocument<512> settings;
-  File file = LittleFS.open("/customWordConfig.json", "r");
+  File file = LittleFS.open("/customWordConfig.jsonl", "r");
   if (!file) {
     Serial.println("customWordConfig.json not found!");
     return;
   }
 
   this->maxWordConfigs = 0;
-  file.find("\"wordConfig\":[");
-  do {
-  DeserializationError error = deserializeJson(settings, file);
-  if (error) {
-    Serial.println("Failed to read customWordConfig.json using default configuration");
-    Serial.println(error.f_str());
-    return;
-  }
+  while (true) {
+    StaticJsonDocument<512> settings;
+    DeserializationError error = deserializeJson(settings, file);
+    if (error) {
+      Serial.println("Failed to read customWordConfig.json using default configuration");
+      Serial.println(error.f_str());
+      return;
+    }
     this->wordConfig[this->maxWordConfigs++].deserialize(settings);
-  } while (file.findUntil(",","]"));
+  }
 
   Serial.println("Loaded custom word config");
 }
 
 void Settings::loadSettings() {
-  StaticJsonDocument<1048> settings;
+  StaticJsonDocument<1024> settings;
   JsonObject obj = settings.to<JsonObject>();
   File file = LittleFS.open("/settings.json", "r");
   if (!file) {

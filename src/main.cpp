@@ -276,7 +276,7 @@ void notifyClients() {
   setLeds();
 }
 
-void getLedColorToWeb(JsonObject &json) {
+void serializeLedColor(JsonDocument &json) {
   String jsonString;
 
   JsonArray array = json.createNestedArray("activeLeds");
@@ -286,36 +286,49 @@ void getLedColorToWeb(JsonObject &json) {
   }
 }
 
-void getTimeToWeb(JsonObject &json) {
-  json["wordTime"] = getWordTime();
-  getLedColorToWeb(json);
-}
-
-void continueWordConfig(JsonObject &json) {
-  json["continueWordConfig"] = true;
-}
-
-void getSettingsToWeb(JsonObject &json) {
-  settings->serializeBasic(json);
-}
-
-void sendWordConfigToWeb(JsonObject &json) {
-  settings->serializeWordConfig(json);
-}
-
-void sendJson(void function(JsonObject &json)) {
-  DynamicJsonDocument json(4096);
-  JsonObject obj = json.to<JsonObject>();
+void sendMessage(JsonDocument &json) {
   String str;
 
-  (*function)(obj);
-
-  if (serializeJson(obj, str) == 0) {
+  if (serializeJson(json, str) == 0) {
     Serial.println("Failed to serialize json");
     return;
   }
   ws.textAll(str);
 }
+
+void updateTimeOnWeb() {
+  DynamicJsonDocument json(4096);
+  json["wordTime"] = getWordTime();
+  serializeLedColor(json);
+  sendMessage(json);
+}
+
+void continueWordConfig() {
+  StaticJsonDocument<32> json;
+  json["continueWordConfig"] = true;
+  sendMessage(json);
+}
+
+void sendSettingsToWeb() {
+  StaticJsonDocument<512> json;
+  JsonObject obj = json.to<JsonObject>();
+  settings->serializeBasic(obj);
+  sendMessage(json);
+}
+
+void sendWordConfigToWeb() {
+  for (uint8_t i = 0; i < settings->getMaxWordConfigs(); ++i) {
+    StaticJsonDocument<512> json;
+    JsonObject obj = json["wordConfig"].to<JsonObject>();
+    settings->getWordConfig()[i].serialize(obj);
+    obj["index"] = i;
+    sendMessage(json);
+  }
+  StaticJsonDocument<64> json;
+  json["wordConfigNumRows"] = settings->getMaxWordConfigs();
+  sendMessage(json);
+}
+
 
 bool updateTime(TIME* time) {
   *time = getTime(&rtc, &timeClient, wifiConnected);
@@ -349,38 +362,38 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       int dialect = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseDialect(dialect > 0);
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("useThreeQuater") == 0) {
       int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseThreeQuater(threeQuater > 0);
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("useQuaterPast") == 0) {
       int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseQuaterPast(quaterPast > 0);
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("useBackgroundColor") == 0) {
       int useBackgroundColor =
           message.substring(message.indexOf("=") + 1).toInt();
       settings->setUseBackgroundColor(useBackgroundColor > 0);
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("backgroundColor") == 0) {
       String backgroundColorStr = message.substring(message.indexOf("=") + 1);
       settings->setBackgroundColor(backgroundColorStr);
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("timeColor") == 0) {
       String timeColorStr = message.substring(message.indexOf("=") + 1);
       settings->setTimeColor(timeColorStr);
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("utcTimeOffset") == 0) {
       int offset = message.substring(message.indexOf("=") + 1).toInt();
@@ -394,18 +407,18 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         return;
       }
       notifyClients();
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
     if (message.indexOf("wordConfig") == 0) {
       String wordConfig = message.substring(message.indexOf("=") + 1);
       settings->setWordConfig(wordConfig);
-      sendJson(continueWordConfig);
+      continueWordConfig();
     }
     if (message.indexOf("finishedWordConfig") == 0) {
       notifyClients();
       settings->saveWordConfig();
-      sendJson(sendWordConfigToWeb);
-      sendJson(getTimeToWeb);
+      sendWordConfigToWeb();
+      updateTimeOnWeb();
     }
     if (message.indexOf("clearWordConfig") == 0) {
       Serial.println("Clear word config");
@@ -413,11 +426,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
 
     if (strcmp((char *)data, "getValues") == 0) {
-      sendJson(getSettingsToWeb);
-      sendJson(sendWordConfigToWeb);
+      sendSettingsToWeb();
+      sendWordConfigToWeb();
     }
     if (strcmp((char *)data, "getTime") == 0) {
-      sendJson(getTimeToWeb);
+      updateTimeOnWeb();
     }
   }
 }
