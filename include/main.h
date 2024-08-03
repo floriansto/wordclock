@@ -5,7 +5,6 @@
 #include <RTClib.h>
 
 #define MAX_WORDS 25
-#define MAX_PIXELS 20
 
 typedef struct _time {
   u_int8_t hour;
@@ -48,8 +47,8 @@ typedef enum _language { DE, DE_DIALECT, MAX_LANGUAGES } LANGUAGE;
 
 typedef struct _word_properties {
   String name;
-  uint16_t numPixels;
-  uint16_t pixels[MAX_PIXELS];
+  uint16_t startPixel;
+  uint8_t length;
 } WORD_PROPERTIES;
 typedef struct _word {
   ClockStr type;

@@ -114,7 +114,7 @@ void setLeds() {
   bool customColor[NUMPIXELS];
   bool showTime = true;
   TIME time;
-  WordConfig* wordConfig;
+  WordConfig *wordConfig;
 
   langKey = settings->getLangKey();
   memset(timeLeds, false, sizeof(timeLeds));
@@ -144,8 +144,8 @@ void setLeds() {
           continue;
         }
         /* Get the active pixels for the current word */
-        for (uint8_t k = 0; k < words[j].properties[langKey].numPixels; ++k) {
-          led = mapLedIndex(words[j].properties[langKey].pixels[k]);
+        for (uint8_t k = 0; k < words[j].properties[langKey].length; ++k) {
+          led = mapLedIndex(k + words[j].properties[langKey].startPixel);
           /* Set the color for each active pixel */
           timeLeds[led] = true;
           if (newColor[led] != timeColorRgb) {
@@ -154,7 +154,6 @@ void setLeds() {
           }
           newColor[led] = timeColor;
         }
-        break;
       }
     }
   }
@@ -166,8 +165,7 @@ void setLeds() {
     }
 
     for (uint16_t i = 0; i < MAX_LED_ENTRIES; ++i) {
-      for (uint16_t j = 0; j < BITMASK_LENGTH; ++j)
-      {
+      for (uint16_t j = 0; j < BITMASK_LENGTH; ++j) {
         if (((1 << j) & wordConfig[k].getLedsAt(i)) == 0) {
           continue;
         }
@@ -301,7 +299,7 @@ void sendMessage(JsonDocument &json) {
 
 void updateTimeOnWeb() {
   DynamicJsonDocument json(4096);
-  //StaticJsonDocument<128> json;
+  // StaticJsonDocument<128> json;
   json["wordTime"] = getWordTime();
   serializeLedColor(json);
   sendMessage(json);
@@ -323,7 +321,7 @@ void sendSettingsToWeb() {
 void sendWordConfigToWeb(uint8_t index) {
   if (index < settings->getMaxWordConfigs()) {
     StaticJsonDocument<512> json;
-    JsonObject obj = json["wordConfig"].to<JsonObject>();
+    JsonObject obj = json.createNestedObject("wordConfig");
     settings->getWordConfig()[index].serialize(obj);
     obj["index"] = index;
     sendMessage(json);
@@ -334,8 +332,7 @@ void sendWordConfigToWeb(uint8_t index) {
   }
 }
 
-
-bool updateTime(TIME* time) {
+bool updateTime(TIME *time) {
   *time = getTime(&rtc, &timeClient, wifiConnected);
 
   /* Error if time is not valid */
@@ -503,9 +500,8 @@ void initFS() {
   }
 }
 
-LANGUAGE getLanguageKey(const char* name) {
-  map_lang_string_to_enum
-  return MAX_LANGUAGES;
+LANGUAGE getLanguageKey(const char *name) {
+  map_lang_string_to_enum return MAX_LANGUAGES;
 }
 
 void loadWordConfig() {
@@ -542,17 +538,17 @@ void loadWordConfig() {
         JsonObject langProperties = props.value().as<JsonObject>();
         lang = getLanguageKey(props.key().c_str());
         words[i].properties[lang].name = langProperties["name"].as<String>();
-        k = 0;
-        for (JsonVariant j : langProperties["pixels"].as<JsonArray>()) {
-          words[i].properties[lang].pixels[k++] = j.as<uint16_t>();
-        }
-        words[i].properties[lang].numPixels = k;
+        words[i].properties[lang].startPixel =
+            langProperties["startPixel"].as<uint16_t>();
+        words[i].properties[lang].length =
+            langProperties["length"].as<uint8_t>();
       }
     }
     ++i;
-  } while (file.findUntil(",","]"));
+  } while (file.findUntil(",", "]"));
 
   file.close();
+  Serial.println("Loaded words");
 
 #if DEBUG
   serializeJsonPretty(words, Serial);
@@ -606,6 +602,12 @@ void setup() {
   }
   setLeds();
   FastLED.show();
+  Serial.print("Settings size: ");
+  Serial.println(sizeof(Settings));
+  Serial.print("words size: ");
+  Serial.println(sizeof(words));
+  Serial.print("Timeprocessor size: ");
+  Serial.println(sizeof(TimeProcessor));
 }
 
 /* Check summertime every hour */
@@ -655,6 +657,7 @@ void loop() {
     if (updateTime(&time) == false) {
       return;
     }
+    setLeds();
     lastTimeUpdate = millis();
   }
 
@@ -677,7 +680,6 @@ void loop() {
     lastRtcSync = millis();
   }
 
-  setLeds();
   interpolateLeds();
   FastLED.show();
 
