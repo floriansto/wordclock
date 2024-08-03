@@ -74,7 +74,7 @@ COLOR_RGB getColor(JsonArray color) {
 uint8_t Settings::getMaxWordConfigs() {return this->maxWordConfigs; }
 
 void Settings::setWordConfig(String &wordConfig) {
-  StaticJsonDocument<512> config;
+  StaticJsonDocument<JSON_SIZE_WORD_CONFIG> config;
   uint32_t leds[MAX_LED_ENTRIES];
 
   if (maxWordConfigs >= MAX_WORD_CONFIGS) {
@@ -160,19 +160,6 @@ void Settings::deserializeBasic(JsonObject &json) {
   this->backgroundColor = hexToRgb(json["backgroundColor"]);
 }
 
-void Settings::serializeWordConfig(JsonObject &json) {
-  if (this->maxWordConfigs == 0) {
-    return;
-  }
-  JsonArray words = json.createNestedArray("wordConfig");
-  for (uint8_t i = 0; i < this->maxWordConfigs; ++i) {
-    StaticJsonDocument<256> wordConfig;
-    JsonObject obj = wordConfig.to<JsonObject>();
-    this->wordConfig[i].serialize(obj);
-    words.add(wordConfig);
-  }
-}
-
 void Settings::saveWordConfig() {
   LittleFS.remove("/customWordConfig.jsonl");
   File file = LittleFS.open("/customWordConfig.jsonl", "a");
@@ -183,7 +170,7 @@ void Settings::saveWordConfig() {
   }
 
   for (u_int8_t i = 0; i < this->maxWordConfigs; ++i) {
-    StaticJsonDocument<512> settings;
+    StaticJsonDocument<JSON_SIZE_WORD_CONFIG> settings;
     JsonObject obj = settings.to<JsonObject>();
     this->wordConfig[i].serialize(obj);
     if (serializeJson(settings, file) == 0) {
@@ -200,7 +187,7 @@ void Settings::saveWordConfig() {
 }
 
 void Settings::saveSettings() {
-  StaticJsonDocument<512> settings;
+  StaticJsonDocument<JSON_SIZE_SETTINGS> settings;
   JsonObject obj = settings.to<JsonObject>();
   File file = LittleFS.open("/settings.json", "w");
 
@@ -231,7 +218,7 @@ void Settings::loadWordConfig() {
 
   this->maxWordConfigs = 0;
   while (true) {
-    StaticJsonDocument<512> settings;
+    StaticJsonDocument<JSON_SIZE_WORD_CONFIG> settings;
     DeserializationError error = deserializeJson(settings, file);
     if (error) {
       Serial.println("Failed to read customWordConfig.jsonl using default configuration");
@@ -244,7 +231,7 @@ void Settings::loadWordConfig() {
 }
 
 void Settings::loadSettings() {
-  StaticJsonDocument<1024> settings;
+  StaticJsonDocument<JSON_SIZE_SETTINGS> settings;
   JsonObject obj = settings.to<JsonObject>();
   File file = LittleFS.open("/settings.json", "r");
   if (!file) {

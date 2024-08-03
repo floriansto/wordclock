@@ -5,7 +5,9 @@
 #include "../include/wordConfig.h"
 #include "../include/main.h"
 
-#define MAX_WORD_CONFIGS 25
+#define MAX_WORD_CONFIGS 100
+#define JSON_SIZE_WORD_CONFIG 384
+#define JSON_SIZE_SETTINGS 256
 
 enum class LedWiring {
   ZIGZAG,
@@ -31,7 +33,6 @@ public:
   void loadWordConfig();
   void serializeBasic(JsonObject &json);
   void deserializeBasic(JsonObject &json);
-  void serializeWordConfig(JsonObject &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   void setTimeColor(String &rgbColor);
