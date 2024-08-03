@@ -12,3 +12,5 @@ esp_ip = "192.168.0.117"
 
 cmd = ["wget", "-O", "data/settings.json", f"{esp_ip}/settings.json"]
 subprocess.run(cmd)
+cmd = ["wget", "-O", "data/customWordConfig.json", f"{esp_ip}/customWordConfig.json"]
+subprocess.run(cmd)

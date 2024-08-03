@@ -152,7 +152,7 @@ function setTable(myObj, key) {
           content.value = ledString;
           break;
         case "color":
-          content.value = convertRGBtoHex(i["color"][0], i["color"][1], i["color"][2]);
+          content.value = "#" + i["color"].toString(16);
           break;
         case "enable":
           content.checked = i["enable"];
@@ -164,7 +164,7 @@ function setTable(myObj, key) {
           content.selectedIndex = i["when"];
           break;
         case "date":
-          if (i["date"]["day"] == null || i["date"]["month"] == null) {
+          if (i["date"]["day"] == 0 || i["date"]["month"] == 0) {
             content.value = "";
           } else {
             content.value = i["date"]["day"] + "." + i["date"]["month"];

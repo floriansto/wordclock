@@ -288,14 +288,11 @@ void continueWordConfig(JsonObject &json) {
 }
 
 void getSettingsToWeb(JsonObject &json) {
-  json["brightness"] = settings->getBrightness();
-  json["useDialect"] = settings->getUseDialect();
-  json["useQuaterPast"] = settings->getUseQuaterPast();
-  json["useThreeQuater"] = settings->getUseThreeQuater();
-  json["timeColor"] = rgbToHex(settings->getTimeColor());
-  json["useBackgroundColor"] = settings->getUseBackgroundColor();
-  json["backgroundColor"] = rgbToHex(settings->getBackgroundColor());
-  json["utcTimeOffset"] = settings->getUtcHourOffset();
+  settings->serializeBasic(json);
+}
+
+void sendWordConfigToWeb(JsonObject &json) {
+  settings->serializeWordConfig(json);
 }
 
 void sendJson(void function(JsonObject &json)) {
@@ -398,6 +395,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
     if (message.indexOf("finishedWordConfig") == 0) {
       notifyClients();
+      settings->saveWordConfig();
+      sendJson(sendWordConfigToWeb);
       sendJson(getTimeToWeb);
     }
     if (message.indexOf("clearWordConfig") == 0) {
@@ -407,6 +406,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
     if (strcmp((char *)data, "getValues") == 0) {
       sendJson(getSettingsToWeb);
+      sendJson(sendWordConfigToWeb);
     }
     if (strcmp((char *)data, "getTime") == 0) {
       sendJson(getTimeToWeb);
@@ -522,6 +522,7 @@ void setup() {
   initFS();
 
   settings->loadSettings();
+  settings->loadWordConfig();
   loadWordConfig();
   updateSettings();
 

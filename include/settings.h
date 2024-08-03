@@ -26,8 +26,11 @@ public:
   uint8_t getBrightness();
   void loadSettings();
   void saveSettings();
-  void serializeBasic(JsonDocument &json);
-  void deserializeBasic(JsonDocument &json);
+  void saveWordConfig();
+  void loadWordConfig();
+  void serializeBasic(JsonObject &json);
+  void deserializeBasic(JsonObject &json);
+  void serializeWordConfig(JsonObject &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
   void setTimeColor(String &rgbColor);

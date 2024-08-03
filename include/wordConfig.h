@@ -2,6 +2,7 @@
 #define __WORDCONFIG_H__
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include "../include/hw_settings.h"
 #include "../include/color.h"
 
@@ -24,6 +25,8 @@ public:
   void setDate(Date date);
   void setValid(boolean valid);
   void setLeds(uint32_t* leds, uint8_t length);
+  void serialize(JsonObject &json);
+  void deserialize(JsonVariant &json);
   boolean isEnabled();
   boolean isValid();
   boolean showTime();
