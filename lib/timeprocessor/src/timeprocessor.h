@@ -77,20 +77,16 @@ enum class Times {
   case hour:                                                                   \
     return key;
 
-#define get_json_key(key, val, hour)                                           \
-  case key:                                                                    \
-    wordKey = val;                                                             \
-    break;
+#define key_from_val(key, val, hour) \
+  if (strcmp(name, val) == 0) { \
+    return key; \
+  }
 
 #define get_enum_from_num(num)                                                 \
   switch (num) { time_table(return_enum) default : return ClockStr::None; }
 
-#define json_key_from_state(state)                                             \
-  switch (state) {                                                             \
-    time_table(get_json_key);                                                  \
-  default:                                                                     \
-    wordKey = "UNBEKANNT";                                                     \
-  }
+#define get_enum_from_name() \
+  time_table(key_from_val)
 
 #define time_fcn(F)                                                            \
   F(Times::Full, 0)                                                            \
@@ -124,6 +120,7 @@ enum class Times {
   switch (state) { time_fcn(select_time_fcn) default : break; }
 
 bool getWord(TIMESTACK *elem, char *word, int maxWordLen, int *i);
+ClockStr getStateFromName(const char* name);
 
 class TimeProcessor {
 public:

@@ -5,6 +5,7 @@
 #include "../include/hw_settings.h"
 #include "../include/settings.h"
 #include "../include/wordConfig.h"
+#include "../include/main.h"
 
 Settings::Settings(LedWiring ledWiring) {
   this->timeColor = COLOR_RGB{252, 184, 33};
@@ -104,6 +105,7 @@ void Settings::setWordConfig(String &wordConfig) {
   this->wordConfig[maxWordConfigs].setValid(true);
 
   ++maxWordConfigs;
+  Serial.println("Deserialize wordconfig: success");
 }
 
 COLOR_RGB stringToColor(String &rgbColor) {
@@ -176,7 +178,7 @@ void Settings::saveWordConfig() {
   File file = LittleFS.open("/customWordConfig.jsonl", "a");
 
   if (!file) {
-    Serial.println("customWordConfig.json not found!");
+    Serial.println("customWordConfig.jsonl not found!");
     return;
   }
 
@@ -223,7 +225,7 @@ void Settings::saveSettings() {
 void Settings::loadWordConfig() {
   File file = LittleFS.open("/customWordConfig.jsonl", "r");
   if (!file) {
-    Serial.println("customWordConfig.json not found!");
+    Serial.println("customWordConfig.jsonl not found!");
     return;
   }
 
@@ -232,9 +234,9 @@ void Settings::loadWordConfig() {
     StaticJsonDocument<512> settings;
     DeserializationError error = deserializeJson(settings, file);
     if (error) {
-      Serial.println("Failed to read customWordConfig.json using default configuration");
+      Serial.println("Failed to read customWordConfig.jsonl using default configuration");
       Serial.println(error.f_str());
-      return;
+      break;
     }
     this->wordConfig[this->maxWordConfigs++].deserialize(settings);
   }
@@ -259,9 +261,9 @@ void Settings::loadSettings() {
   Serial.println("Loaded settings");
 }
 
-String Settings::getLangKey() {
+LANGUAGE Settings::getLangKey() {
   if (this->getUseDialect()) {
-    return "de-Dialect";
+    return DE_DIALECT;
   }
-  return "de-DE";
+  return DE;
 }

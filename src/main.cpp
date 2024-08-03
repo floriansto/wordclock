@@ -43,8 +43,7 @@ RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 Settings *settings = new Settings(LedWiring::ZIGZAG);
-DynamicJsonDocument wordsDoc(8192);
-JsonObject words;
+WORD words[MAX_WORDS];
 
 TimeProcessor *timeProcessor = new TimeProcessor(
     settings->getUseDialect(), settings->getUseQuaterPast(),
@@ -104,8 +103,7 @@ void setLeds() {
   u_int32_t background = rgbToHex(settings->getBackgroundColor());
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
-  String wordKey;
-  String langKey;
+  LANGUAGE langKey;
   JsonArray wordPixels;
   u_int16_t led;
   CRGB timeColorRgb = timeColor;
@@ -140,19 +138,23 @@ void setLeds() {
         error = Error::TIMESTACK_GET_ELEM_FAILED;
         return;
       }
-      json_key_from_state(elem.state);
 
-      /* Get the active pixels for the current word */
-      wordPixels = words[wordKey][langKey]["pixels"].as<JsonArray>();
-      /* Set the color for each active pixel */
-      for (JsonVariant pixel : wordPixels) {
-        led = mapLedIndex(pixel.as<u_int16_t>());
-        timeLeds[led] = true;
-        if (newColor[led] != timeColorRgb) {
-          oldColor[led] = leds[led];
-          interpolationTime[led] = 0.0;
+      for (uint8_t j = 0; j < MAX_WORDS; ++j) {
+        if (words[j].type != elem.state) {
+          continue;
         }
-        newColor[led] = timeColor;
+        /* Get the active pixels for the current word */
+        for (uint8_t k = 0; k < words[j].properties[langKey].numPixels; ++k) {
+          led = mapLedIndex(words[j].properties[langKey].pixels[k]);
+          /* Set the color for each active pixel */
+          timeLeds[led] = true;
+          if (newColor[led] != timeColorRgb) {
+            oldColor[led] = leds[led];
+            interpolationTime[led] = 0.0;
+          }
+          newColor[led] = timeColor;
+        }
+        break;
       }
     }
   }
@@ -246,26 +248,27 @@ void updateSettings() {
 
 String getWordTime() {
   TIMESTACK elem;
-  String langKey;
-  String wordKey;
+  LANGUAGE langKey;
   Timestack *stack = timeProcessor->getStack();
   String wordTime{""};
 
-  if (settings->getUseDialect())
-    langKey = "de-Dialect";
-  else
-    langKey = "de-DE";
+  langKey = settings->getLangKey();
 
-  for (int i = 0; i < stack->getSize(); ++i) {
+  for (uint8_t i = 0; i < stack->getSize(); ++i) {
     if (!stack->get(&elem, i)) {
       error = Error::TIMESTACK_GET_ELEM_FAILED;
       wordTime = "Error";
       break;
     }
-    json_key_from_state(elem.state);
 
-    wordTime += words[wordKey][langKey]["name"].as<String>();
-    wordTime += " ";
+    for (uint8_t j = 0; j < MAX_WORDS; ++j) {
+      if (words[j].type != elem.state) {
+        continue;
+      }
+      wordTime += words[j].properties[langKey].name;
+      wordTime += " ";
+      break;
+    }
   }
   return wordTime;
 }
@@ -298,6 +301,7 @@ void sendMessage(JsonDocument &json) {
 
 void updateTimeOnWeb() {
   DynamicJsonDocument json(4096);
+  //StaticJsonDocument<128> json;
   json["wordTime"] = getWordTime();
   serializeLedColor(json);
   sendMessage(json);
@@ -412,6 +416,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
     if (message.indexOf("wordConfig") == 0) {
       String wordConfig = message.substring(message.indexOf("=") + 1);
+      Serial.println("Set word config");
       settings->setWordConfig(wordConfig);
       continueWordConfig();
     }
@@ -498,31 +503,57 @@ void initFS() {
   }
 }
 
+LANGUAGE getLanguageKey(const char* name) {
+  map_lang_string_to_enum
+  return MAX_LANGUAGES;
+}
+
 void loadWordConfig() {
   File file = LittleFS.open("/words.json", "r");
+  uint8_t i{0};
+  uint8_t k{0};
+  LANGUAGE lang;
   if (!file) {
     Serial.println("words.json not found!");
     return;
   }
-  DeserializationError error = deserializeJson(wordsDoc, file);
-  if (error) {
-    file.close();
-    Serial.println("Failed to read words.json using default configuration");
-    Serial.println(error.f_str());
-    return;
-  }
+  file.find("\"words\": [");
+  do {
+    StaticJsonDocument<1024> wordsDoc;
+    DeserializationError error = deserializeJson(wordsDoc, file);
+    if (error) {
+      file.close();
+      Serial.println("Failed to read words.json using default configuration");
+      Serial.println(error.f_str());
+      break;
+    }
+    JsonObject obj = wordsDoc.as<JsonObject>();
+
+    for (JsonPair kv : obj) {
+      JsonObject value = kv.value().as<JsonObject>();
+      if (!value.containsKey("de-DE")) {
+        continue;
+      }
+      if (!value.containsKey("de-Dialect")) {
+        value["de-Dialect"] = value["de-DE"];
+      }
+      words[i].type = getStateFromName(kv.key().c_str());
+      for (JsonPair props : kv.value().as<JsonObject>()) {
+        JsonObject langProperties = props.value().as<JsonObject>();
+        lang = getLanguageKey(props.key().c_str());
+        words[i].properties[lang].name = langProperties["name"].as<String>();
+        k = 0;
+        for (JsonVariant j : langProperties["pixels"].as<JsonArray>()) {
+          words[i].properties[lang].pixels[k++] = j.as<uint16_t>();
+        }
+        words[i].properties[lang].numPixels = k;
+      }
+    }
+    ++i;
+  } while (file.findUntil(",","]"));
+
   file.close();
 
-  words = wordsDoc.as<JsonObject>();
-  for (JsonObject::iterator it = words.begin(); it != words.end(); ++it) {
-    if (!words[it->key()].containsKey("de-DE")) {
-      words.remove(it);
-      continue;
-    }
-
-    if (!words[it->key()].containsKey("de-Dialect"))
-      words[it->key()]["de-Dialect"] = words[it->key()]["de-DE"];
-  }
 #if DEBUG
   serializeJsonPretty(words, Serial);
 #endif

@@ -7,6 +7,10 @@
 int riseHour(int hour) { return hour == 12 ? 1 : ++hour; }
 
 ClockStr getStateFromNum(int num) { get_enum_from_num(num); }
+ClockStr getStateFromName(const char *name) {
+  get_enum_from_name();
+  return ClockStr::None;
+}
 
 TimeProcessor::TimeProcessor(bool useDialect, bool useQuaterPast,
                              bool useThreeQuater, int offsetLowSecs,

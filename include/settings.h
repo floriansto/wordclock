@@ -3,6 +3,7 @@
 
 #include "../include/color.h"
 #include "../include/wordConfig.h"
+#include "../include/main.h"
 
 #define MAX_WORD_CONFIGS 25
 
@@ -39,7 +40,7 @@ public:
   void setWordConfig(String &wordConfig);
   WordConfig* getWordConfig();
   COLOR_RGB getTimeColor();
-  String getLangKey();
+  LANGUAGE getLangKey();
   LedWiring getLedWiring();
   void clearWordConfig();
   uint8_t getMaxWordConfigs();

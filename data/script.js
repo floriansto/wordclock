@@ -184,7 +184,6 @@ function onMessage(event) {
     console.error(e);
   }
   var keys = Object.keys(message);
-  console.log(message);
 
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
