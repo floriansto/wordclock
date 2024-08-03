@@ -316,17 +316,18 @@ void sendSettingsToWeb() {
   sendMessage(json);
 }
 
-void sendWordConfigToWeb() {
-  for (uint8_t i = 0; i < settings->getMaxWordConfigs(); ++i) {
+void sendWordConfigToWeb(uint8_t index) {
+  if (index < settings->getMaxWordConfigs()) {
     StaticJsonDocument<512> json;
     JsonObject obj = json["wordConfig"].to<JsonObject>();
-    settings->getWordConfig()[i].serialize(obj);
-    obj["index"] = i;
+    settings->getWordConfig()[index].serialize(obj);
+    obj["index"] = index;
+    sendMessage(json);
+  } else {
+    StaticJsonDocument<64> json;
+    json["wordConfigNumRows"] = settings->getMaxWordConfigs();
     sendMessage(json);
   }
-  StaticJsonDocument<64> json;
-  json["wordConfigNumRows"] = settings->getMaxWordConfigs();
-  sendMessage(json);
 }
 
 
@@ -417,17 +418,21 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (message.indexOf("finishedWordConfig") == 0) {
       notifyClients();
       settings->saveWordConfig();
-      sendWordConfigToWeb();
+      sendWordConfigToWeb(0);
       updateTimeOnWeb();
     }
     if (message.indexOf("clearWordConfig") == 0) {
       Serial.println("Clear word config");
       settings->clearWordConfig();
     }
+    if (message.indexOf("continueSendWordConfig") == 0) {
+      uint8_t index = message.substring(message.indexOf("=") + 1).toInt();
+      sendWordConfigToWeb(index);
+    }
 
     if (strcmp((char *)data, "getValues") == 0) {
       sendSettingsToWeb();
-      sendWordConfigToWeb();
+      sendWordConfigToWeb(0);
     }
     if (strcmp((char *)data, "getTime") == 0) {
       updateTimeOnWeb();

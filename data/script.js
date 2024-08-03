@@ -29,6 +29,8 @@ function initWebSocket() {
 
 function onOpen(event) {
   console.log('Connection opened');
+  allowSavingWordConfig = true;
+  nextWordIndex = 0;
   getValues();
 }
 
@@ -95,20 +97,72 @@ function convertRGBtoHex(red, green, blue) {
   return "#" + colorToHex(red) + colorToHex(green) + colorToHex(blue);
 }
 
-function setTable(myObj, key) {
+function wordConfigFillRow(message) {
   var table = document.getElementById("word-config");
-  var counter = 0;
-  var initialTableRows = table.rows.length - 2
-  var rowsToRemove = 0;
+  var index = message["index"];
 
-  if (myObj == null || myObj[key] == null) {
+  if (index + 2 >= table.rows.length) {
+    addRow("word-config");
+  }
+  var row = table.rows[index + 2]
+  if (row === undefined) {
     return;
   }
 
-  if (initialTableRows > myObj[key].length) {
-    var rowsToRemove = initialTableRows - myObj[key].length;
-  }
+  for (let cell of row.cells) {
+    let content = cell.childNodes[0];
 
+    if (content === undefined)
+      continue
+
+    switch (content.id) {
+      case "leds":
+        var ledString = "";
+        index = 0;
+        for (let j of message["leds"]) {
+          for (var k = 0; k < maxBits; ++k) {
+            if ((((1 << k) & j) >>> 0) > 0) {
+              if (ledString !== "") {
+                ledString += ",";
+              }
+              ledString += ((k + maxBits * index) + 1)
+            }
+          }
+          ++index;
+        }
+        content.value = ledString;
+        break;
+      case "color":
+        content.value = "#" + message["color"].toString(16);
+        break;
+      case "enable":
+        content.checked = message["enable"];
+        break;
+      case "useTime":
+        content.checked = message["useTime"];
+        break;
+      case "when":
+        content.selectedIndex = message["when"];
+        break;
+      case "date":
+        if (message["date"]["day"] == 0 || message["date"]["month"] == 0) {
+          content.value = "";
+        } else {
+          content.value = message["date"]["day"] + "." + message["date"]["month"];
+        }
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+function wordConfigRemoveRows(numRows) {
+  var table = document.getElementById("word-config");
+  if (numRows + 2 <= table.rows.length) {
+    return;
+  }
+  var rowsToRemove = table.rows.length - numRows + 2;
   for (var i = 0; i < rowsToRemove; ++i) {
     let row = table.rows[table.rows.length - 1];
     if (row === undefined) {
@@ -116,67 +170,6 @@ function setTable(myObj, key) {
     }
     row.remove();
   }
-
-  counter = 0
-  for (let i of myObj[key]) {
-    if (counter >= initialTableRows) {
-      addRow("word-config");
-    }
-
-    let row = table.rows[counter + 2]
-    if (row === undefined) {
-      continue;
-    }
-
-    for (let cell of row.cells) {
-      let content = cell.childNodes[0];
-
-      if (content === undefined)
-        continue
-
-      switch (content.id) {
-        case "leds":
-          var ledString = "";
-          var index = 0;
-          for (let j of i["leds"]) {
-            for (var k = 0; k < maxBits; ++k) {
-              if ((((1 << k) & j) >>> 0) > 0) {
-                if (ledString !== "") {
-                  ledString += ",";
-                }
-                ledString += ((k + maxBits * index) + 1)
-              }
-            }
-            ++index;
-          }
-          content.value = ledString;
-          break;
-        case "color":
-          content.value = "#" + i["color"].toString(16);
-          break;
-        case "enable":
-          content.checked = i["enable"];
-          break;
-        case "useTime":
-          content.checked = i["useTime"];
-          break;
-        case "when":
-          content.selectedIndex = i["when"];
-          break;
-        case "date":
-          if (i["date"]["day"] == 0 || i["date"]["month"] == 0) {
-            content.value = "";
-          } else {
-            content.value = i["date"]["day"] + "." + i["date"]["month"];
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    ++counter;
-  }
-  return;
 }
 
 function onMessage(event) {
@@ -185,45 +178,51 @@ function onMessage(event) {
     return
   }
   try {
-    var myObj = JSON.parse(event.data);
+    var message = JSON.parse(event.data);
   } catch (e) {
     console.log(event.data)
     console.error(e);
   }
-  var keys = Object.keys(myObj);
+  var keys = Object.keys(message);
+  console.log(message);
 
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
     if (document.getElementById(key + "Display") != null) {
-      document.getElementById(key + "Display").innerHTML = myObj[key];
+      document.getElementById(key + "Display").innerHTML = message[key];
     }
     elem = document.getElementById(key);
     if (elem != null) {
       if (elem.getAttribute("type") === "checkbox") {
-        elem.checked = myObj[key];
+        elem.checked = message[key];
       } else if (elem.getAttribute("type") === "color") {
-        document.getElementById(key).value = "#" + myObj[key].toString(16);
+        document.getElementById(key).value = "#" + message[key].toString(16);
       } else {
-        document.getElementById(key).value = myObj[key];
+        document.getElementById(key).value = message[key];
       }
     }
 
     if (key === "wordTime") {
-      document.getElementById(key).innerHTML = myObj[key];
+      document.getElementById(key).innerHTML = message[key];
     }
 
     if (key === "wordConfig") {
-      setTable(myObj, key);
+      wordConfigFillRow(message[key])
+      let index = message[key]["index"] + 1;
+      websocket.send("continueSendWordConfig=" + index);
+    }
+
+    if (key == "wordConfigNumRows") {
+      wordConfigRemoveRows(message[key]);
     }
 
     if (key === "activeLeds") {
-      console.log(myObj[key]);
       var table = document.getElementById("preview");
 
       var j = 0;
       for (let row of table.rows) {
         for (let cell of row.cells) {
-          intColor = parseInt(myObj[key][j++]);
+          intColor = parseInt(message[key][j++]);
           if (intColor == 0)
             intColor = 0xFFFFFF;
           rgb = intToRgbColor(intColor);
@@ -232,7 +231,7 @@ function onMessage(event) {
       }
     }
 
-    if (key === "continueWordConfig") {
+    if (key === "continueWordConfig" && nextWordIndex > 0) {
       allowSavingWordConfig = true;
       saveWords(nextWordIndex);
     }
@@ -363,6 +362,10 @@ function saveWords(rowIndex) {
   if (allowSavingWordConfig === false) {
     console.log("Not allowed to save words")
     return;
+  }
+
+  if (rowIndex == 2 && table.rows.length == 2) {
+    websocket.send("clearWordConfig");
   }
 
   if (rowIndex >= table.rows.length) {
