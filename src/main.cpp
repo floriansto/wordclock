@@ -111,6 +111,7 @@ void setLeds() {
   CRGB timeColorRgb = timeColor;
   CRGB backgroundRgb = background;
   CRGB customColorRgb;
+  CRGB targetColor[NUMPIXELS];
   bool timeLeds[NUMPIXELS];
   bool customColor[NUMPIXELS];
   bool showTime = true;
@@ -120,6 +121,7 @@ void setLeds() {
   langKey = settings->getLangKey();
   memset(timeLeds, false, sizeof(timeLeds));
   memset(customColor, false, sizeof(customColor));
+  memset(targetColor, 0, sizeof(targetColor));
 
   wordConfig = settings->getWordConfig();
   for (uint8_t k = 0; k < settings->getMaxWordConfigs(); ++k) {
@@ -173,15 +175,21 @@ void setLeds() {
         }
         customColor[led] = true;
         customColorRgb = wordConfig[k].getColor();
-
-        if (newColor[led] == customColorRgb) {
-          continue;
-        }
-        newColor[led] = rgbToHex(customColorRgb);
-        oldColor[led] = leds[led];
-        interpolationTime[led] = 0.0;
+        targetColor[led] = rgbToHex(customColorRgb);
       }
     }
+  }
+
+  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
+    if (!customColor[i]) {
+      continue;
+    }
+    if (targetColor[i] == newColor[i]) {
+      continue;
+    }
+    oldColor[i] = leds[i];
+    newColor[i] = targetColor[i];
+    interpolationTime[i] = 0.0;
   }
 
   /* Fill all non time relevant leds with the background color */
@@ -217,8 +225,8 @@ void interpolateLeds() {
       prevCol2 = newColor[i];
       equal = false;
     }
-    t = interpolationTime[i] / interpolationDuration;
     if (!equal) {
+      t = interpolationTime[i] / interpolationDuration;
       c = rgb_interp(rgbToHex(oldColor[i]), rgbToHex(newColor[i]), t);
     }
     leds[i] = CRGB{c};

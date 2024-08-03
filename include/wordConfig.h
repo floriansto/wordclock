@@ -6,7 +6,7 @@
 #include "../include/hw_settings.h"
 #include "../include/color.h"
 
-#define MAX_LED_ENTRIES (NUMPIXELS / 32 + 1)
+#define MAX_LED_ENTRIES (NUMPIXELS / BITMASK_LENGTH + 1)
 enum LedConfigWhen { ALWAYS, DATE, UNDEFINED };
 
 struct Date {
