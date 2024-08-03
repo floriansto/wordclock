@@ -73,8 +73,8 @@ COLOR_RGB getColor(JsonArray color) {
 uint8_t Settings::getMaxWordConfigs() {return this->maxWordConfigs; }
 
 void Settings::setWordConfig(String &wordConfig) {
-  StaticJsonDocument<1024> config;
-  uint32_t leds[MAX_WORD_CONFIGS];
+  StaticJsonDocument<512> config;
+  uint32_t leds[MAX_LED_ENTRIES];
 
   if (maxWordConfigs >= MAX_WORD_CONFIGS) {
     return;
@@ -91,8 +91,8 @@ void Settings::setWordConfig(String &wordConfig) {
   for (JsonInteger j : config["leds"].as<JsonArray>()) {
     leds[i++] = j;
   }
-  for (i; i < MAX_LED_ENTRIES; ++i) {
-    leds[i] = 0;
+  while (i < MAX_LED_ENTRIES) {
+    leds[i++] = 0;
   }
 
   this->wordConfig[maxWordConfigs].setEnabled(config["enable"].as<boolean>());
@@ -219,22 +219,25 @@ void Settings::saveSettings() {
 }
 
 void Settings::loadWordConfig() {
-  DynamicJsonDocument settings(4096);
+  StaticJsonDocument<512> settings;
   File file = LittleFS.open("/customWordConfig.json", "r");
   if (!file) {
     Serial.println("customWordConfig.json not found!");
     return;
   }
+
+  this->maxWordConfigs = 0;
+  file.find("\"wordConfig\":[");
+  do {
   DeserializationError error = deserializeJson(settings, file);
   if (error) {
     Serial.println("Failed to read customWordConfig.json using default configuration");
     Serial.println(error.f_str());
     return;
   }
-  this->maxWordConfigs = 0;
-  for (JsonVariant i : settings["wordConfig"].as<JsonArray>()) {
-    this->wordConfig[this->maxWordConfigs++].deserialize(i);
-  }
+    this->wordConfig[this->maxWordConfigs++].deserialize(settings);
+  } while (file.findUntil(",","]"));
+
   Serial.println("Loaded custom word config");
 }
 

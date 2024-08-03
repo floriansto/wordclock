@@ -26,7 +26,7 @@ public:
   void setValid(boolean valid);
   void setLeds(uint32_t* leds, uint8_t length);
   void serialize(JsonObject &json);
-  void deserialize(JsonVariant &json);
+  void deserialize(JsonDocument &json);
   boolean isEnabled();
   boolean isValid();
   boolean showTime();

@@ -52,7 +52,7 @@ void WordConfig::serialize(JsonObject &json) {
   }
 }
 
-void WordConfig::deserialize(JsonVariant &json) {
+void WordConfig::deserialize(JsonDocument &json) {
   uint8_t idx{0};
   this->enabled = json["enable"];
   this->timeEnabled = json["useTime"];
