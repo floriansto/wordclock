@@ -172,10 +172,8 @@ void Settings::serializeWordConfig(JsonObject &json) {
 }
 
 void Settings::saveWordConfig() {
-  StaticJsonDocument<512> settings;
-  JsonObject obj = settings.to<JsonObject>();
-  LittleFS.remove("/customWordConfig.json");
-  File file = LittleFS.open("/customWordConfig.json", "a");
+  LittleFS.remove("/customWordConfig.jsonl");
+  File file = LittleFS.open("/customWordConfig.jsonl", "a");
 
   if (!file) {
     Serial.println("customWordConfig.json not found!");
@@ -183,12 +181,15 @@ void Settings::saveWordConfig() {
   }
 
   for (u_int8_t i = 0; i < this->maxWordConfigs; ++i) {
+    StaticJsonDocument<512> settings;
+    JsonObject obj = settings.to<JsonObject>();
     this->wordConfig[i].serialize(obj);
     if (serializeJson(settings, file) == 0) {
       Serial.println("Failed to save custom word config");
       file.close();
       return;
     }
+    file.print("\n");
   }
 
   file.close();
@@ -237,7 +238,6 @@ void Settings::loadWordConfig() {
     }
     this->wordConfig[this->maxWordConfigs++].deserialize(settings);
   }
-
   Serial.println("Loaded custom word config");
 }
 
