@@ -729,6 +729,16 @@ void loop() {
   /* Store state of wifi connection */
   wifiConnected = WiFi.status() == WL_CONNECTED;
 
+  /* Check if the summertime needs to be adjusted and if so, do so */
+  if (millis() - lastDaylightCheck > checkDaylightTime) {
+    if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
+                         wifiConnected) != true) {
+      error = Error::SUMMERTIME_ERROR;
+      return;
+    }
+    lastDaylightCheck = millis();
+  }
+
   /* Get the current time */
   if (millis() - lastTimeUpdate > updateTimeInterval) {
     if (updateTime(&time) == false) {
@@ -740,16 +750,6 @@ void loop() {
       setStartTime = true;
     }
     lastTimeUpdate = millis();
-  }
-
-  /* Check if the summertime needs to be adjusted and if so, do so */
-  if (millis() - lastDaylightCheck > checkDaylightTime) {
-    if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
-                         wifiConnected) != true) {
-      error = Error::SUMMERTIME_ERROR;
-      return;
-    }
-    lastDaylightCheck = millis();
   }
 
   /* Update the time on the rtc from the ntp time */
