@@ -8,6 +8,8 @@
 #define MAX_WORD_CONFIGS 15
 #define JSON_SIZE_WORD_CONFIG 384
 #define JSON_SIZE_SETTINGS 256
+#define JSON_SIZE_PREVIEW 512
+#define PREVIEW_LEDS 14
 
 class Settings {
 public:

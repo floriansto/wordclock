@@ -200,15 +200,24 @@ function onMessage(event) {
       var table = document.getElementById("preview");
 
       var j = 0;
+      var k = 0;
       for (let row of table.rows) {
         for (let cell of row.cells) {
-          color = message[key][j++]
-          intColor = parseInt(message[key][j++]);
-          if (intColor == 0)
-            intColor = 0xFFFFFF;
-          cell.style.color = "#" + intColor.toString(16).padStart(6, '0');
+          if (j < parseInt(message[key]["startIdx"])) {
+            ++j;
+            continue;
+          }
+          if (k >= parseInt(message[key]["len"])) {
+            break;
+          }
+          cell.style.color = "#" + message[key]["leds"][k++];
+        }
+        if (parseInt(k >= message[key]["len"])) {
+          break;
         }
       }
+      var endIdx = k + parseInt(message[key]["startIdx"]);
+      websocket.send("continueSendPreview=" + endIdx);
     }
 
     if (key === "continueWordConfig" && nextWordIndex > 0) {

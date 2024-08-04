@@ -50,6 +50,7 @@ enum class MessageId {
   CONTINUE_SEND_WORDCONFIG,
   GET_VALUES,
   GET_TIME,
+  CONTINUE_SEND_PREVIEW,
 };
 
 typedef enum _language { DE, DE_DIALECT, MAX_LANGUAGES } LANGUAGE;

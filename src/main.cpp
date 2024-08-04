@@ -43,7 +43,7 @@ RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
 Settings setting = Settings();
-Settings* settings = &setting;
+Settings *settings = &setting;
 
 WORD words[MAX_WORDS];
 
@@ -89,7 +89,7 @@ uint16_t mirrorLedVertical(uint16_t led) {
   } else {
     ledInRow = led % COL_PIXELS;
   }
-  return rowsAbove *  COL_PIXELS + ledInRow;
+  return rowsAbove * COL_PIXELS + ledInRow;
 }
 
 /**
@@ -272,11 +272,11 @@ void updateSettings() {
                         calcBrightnessScale(numActiveLeds));
 }
 
-void getWordTime(char* wordTime, uint8_t maxLen) {
+void getWordTime(char *wordTime, uint8_t maxLen) {
   TIMESTACK elem;
   LANGUAGE langKey;
   Timestack *stack = timeProcessor->getStack();
-  char* nextWord;
+  char *nextWord;
 
   langKey = settings->getLangKey();
   memset(wordTime, '\0', sizeof(char) * maxLen);
@@ -309,14 +309,6 @@ void notifyClients() {
   setLeds();
 }
 
-void serializeLedColor(JsonDocument &json) {
-  JsonArray array = json.createNestedArray("activeLeds");
-
-  for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
-    array.add(rgbToHex(newColor[mapLedIndex(i)]));
-  }
-}
-
 void sendMessage(JsonDocument &json) {
   char str[500];
 
@@ -324,7 +316,6 @@ void sendMessage(JsonDocument &json) {
     Serial.println("Failed to serialize json");
     return;
   }
-  //Serial.println(str);
   ws.textAll(str);
 }
 
@@ -334,13 +325,28 @@ void sendStarttime() {
   sendMessage(json);
 }
 
+void sendPreviewToWeb(uint8_t startIdx) {
+  StaticJsonDocument<JSON_SIZE_PREVIEW> json;
+  JsonArray leds = json["activeLeds"].createNestedArray("leds");
+  uint16_t i;
+  for (i = startIdx; i < startIdx + PREVIEW_LEDS; ++i) {
+    if (i >= NUMPIXELS) {
+      break;
+    }
+    char hexColor[7];
+    snprintf(hexColor, sizeof(hexColor), "%06X", rgbToHex(newColor[mapLedIndex(i)]));
+    leds.add(hexColor);
+  }
+  json["activeLeds"]["startIdx"] = startIdx;
+  json["activeLeds"]["len"] = i - startIdx;
+  sendMessage(json);
+}
+
 void updateTimeOnWeb() {
-  //DynamicJsonDocument json(4096);
   StaticJsonDocument<128> json;
   char wordTime[MAX_WORDTIME_LENGTH];
   getWordTime(wordTime, MAX_WORDTIME_LENGTH);
   json["wordTime"] = wordTime;
-  //serializeLedColor(json);
   sendMessage(json);
 }
 
@@ -388,8 +394,8 @@ bool updateTime(TIME *time) {
   return true;
 }
 
-MessageId getMessageId(const char* message) {
-  char* startAddress;
+MessageId getMessageId(const char *message) {
+  char *startAddress;
   startAddress = strstr(message, "Brightness");
   if (startAddress == message) {
     return MessageId::BRIGHTNESS;
@@ -446,100 +452,139 @@ MessageId getMessageId(const char* message) {
   if (startAddress == message) {
     return MessageId::GET_TIME;
   }
+  startAddress = strstr(message, "continueSendPreview");
+  if (startAddress == message) {
+    return MessageId::CONTINUE_SEND_PREVIEW;
+  }
   return MessageId::UNKNOWN;
 }
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
-  if (info->final && info->index == 0 && info->len == len &&
-      info->opcode == WS_TEXT) {
-    data[len] = 0;
-    const char* message = (char *)data;
-    char* messageBegin = strstr(message, "=");
-    if (messageBegin) {
-      ++messageBegin;
+  if (!(info->final && info->index == 0 && info->len == len &&
+        info->opcode == WS_TEXT)) {
+    return;
+  }
+  data[len] = 0;
+  const char *message = (char *)data;
+  char *messageBegin = strstr(message, "=");
+  if (messageBegin) {
+    ++messageBegin;
+  }
+  MessageId id = getMessageId(message);
+  switch (id) {
+  case MessageId::BRIGHTNESS: {
+    int brightness = atoi(messageBegin);
+    settings->setBrightness(brightness);
+    notifyClients();
+    break;
+  }
+  case MessageId::DIALECT: {
+    int dialect = atoi(messageBegin);
+    settings->setUseDialect(dialect > 0);
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::THREE_QUATER: {
+    int threeQuater = atoi(messageBegin);
+    settings->setUseThreeQuater(threeQuater > 0);
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::QUATER_PAST: {
+    int quaterPast = atoi(messageBegin);
+    settings->setUseQuaterPast(quaterPast > 0);
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::USE_BACKGROUND: {
+    int useBackgroundColor = atoi(messageBegin);
+    settings->setUseBackgroundColor(useBackgroundColor > 0);
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::BACKGROUND_COLOR: {
+    settings->setBackgroundColor(messageBegin);
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::TIME_COLOR: {
+    settings->setTimeColor(messageBegin);
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::UTC_TIME_OFFSET: {
+    int offset = atoi(messageBegin);
+    settings->setUtcHourOffset(offset);
+    if (adjustSummertime(&rtc, &timeClient, offset, wifiConnected) != true) {
+      Serial.println("Failed to adjust time");
+      error = Error::SUMMERTIME_ERROR;
     }
-    MessageId id = getMessageId(message);
-    if (id == MessageId::BRIGHTNESS) {
-      int brightness = atoi(messageBegin);
-      settings->setBrightness(brightness);
-      notifyClients();
+    TIME time;
+    if (updateTime(&time) == false) {
+      break;
     }
-    if (id == MessageId::DIALECT) {
-      int dialect = atoi(messageBegin);
-      settings->setUseDialect(dialect > 0);
-      notifyClients();
-      updateTimeOnWeb();
+    notifyClients();
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::WORDCONFIG: {
+    Serial.println("Set word config");
+    settings->setWordConfig(messageBegin);
+    continueWordConfig();
+    break;
+  }
+  case MessageId::FINISHED_WORDCONFIG: {
+    settings->saveWordConfig();
+    notifyClients();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::CLEAR_WORDCONFIG: {
+    Serial.println("Clear word config");
+    settings->clearWordConfig();
+    break;
+  }
+  case MessageId::CONTINUE_SEND_WORDCONFIG: {
+    uint8_t index = atoi(messageBegin);
+    sendWordConfigToWeb(index);
+    break;
+  }
+  case MessageId::GET_VALUES: {
+    sendSettingsToWeb();
+    sendStarttime();
+    sendWordConfigToWeb(0);
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::GET_TIME: {
+    updateTimeOnWeb();
+    sendPreviewToWeb(0);
+    break;
+  }
+  case MessageId::CONTINUE_SEND_PREVIEW: {
+    uint16_t startIdx = atoi(messageBegin);
+    if (startIdx < NUMPIXELS) {
+      sendPreviewToWeb(startIdx);
     }
-    if (id == MessageId::THREE_QUATER) {
-      int threeQuater = atoi(messageBegin);
-      settings->setUseThreeQuater(threeQuater > 0);
-      notifyClients();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::QUATER_PAST) {
-      int quaterPast = atoi(messageBegin);
-      settings->setUseQuaterPast(quaterPast > 0);
-      notifyClients();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::USE_BACKGROUND) {
-      int useBackgroundColor = atoi(messageBegin);
-      settings->setUseBackgroundColor(useBackgroundColor > 0);
-      notifyClients();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::BACKGROUND_COLOR) {
-      settings->setBackgroundColor(messageBegin);
-      notifyClients();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::TIME_COLOR) {
-      settings->setTimeColor(messageBegin);
-      notifyClients();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::UTC_TIME_OFFSET) {
-      int offset = atoi(messageBegin);
-      settings->setUtcHourOffset(offset);
-      if (adjustSummertime(&rtc, &timeClient, offset, wifiConnected) != true) {
-        Serial.println("Failed to adjust time");
-        error = Error::SUMMERTIME_ERROR;
-      }
-      TIME time;
-      if (updateTime(&time) == false) {
-        return;
-      }
-      notifyClients();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::WORDCONFIG) {
-      Serial.println("Set word config");
-      settings->setWordConfig(messageBegin);
-      continueWordConfig();
-    }
-    if (id == MessageId::FINISHED_WORDCONFIG) {
-      notifyClients();
-      settings->saveWordConfig();
-      updateTimeOnWeb();
-    }
-    if (id == MessageId::CLEAR_WORDCONFIG) {
-      Serial.println("Clear word config");
-      settings->clearWordConfig();
-    }
-    if (id == MessageId::CONTINUE_SEND_WORDCONFIG) {
-      uint8_t index = atoi(messageBegin);
-      sendWordConfigToWeb(index);
-    }
-
-    if (id == MessageId::GET_VALUES) {
-      sendSettingsToWeb();
-      sendStarttime();
-      sendWordConfigToWeb(0);
-    }
-    if (id == MessageId::GET_TIME) {
-      updateTimeOnWeb();
-    }
+    break;
+  }
+  case MessageId::UNKNOWN: {
+    break;
+  }
   }
 }
 
@@ -637,7 +682,8 @@ void loadWordConfig() {
       for (JsonPair props : kv.value().as<JsonObject>()) {
         JsonObject langProperties = props.value().as<JsonObject>();
         lang = getLanguageKey(props.key().c_str());
-        strcpy(words[i].properties[lang].name, langProperties["name"].as<const char*>());
+        strcpy(words[i].properties[lang].name,
+               langProperties["name"].as<const char *>());
         words[i].properties[lang].startPixel =
             langProperties["startPixel"].as<uint16_t>();
         words[i].properties[lang].length =
@@ -771,7 +817,9 @@ void loop() {
     }
     setLeds();
     if (!setStartTime) {
-      snprintf(startTime, sizeof(startTime), "%02d:%02d:%02d %02d.%02d.%04d", time.hour, time.minute, time.seconds, time.day, time.month, time.year);
+      snprintf(startTime, sizeof(startTime), "%02d:%02d:%02d %02d.%02d.%04d",
+               time.hour, time.minute, time.seconds, time.day, time.month,
+               time.year);
       setStartTime = true;
     }
     lastTimeUpdate = millis();
