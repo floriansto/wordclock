@@ -65,16 +65,6 @@ function hexToColor(hex) {
   return [r, g, b];
 }
 
-function intToRgbColor(intValue) {
-  // Extract the red, green, and blue components from the integer
-  var red = (intValue >> 16) & 0xFF;
-  var green = (intValue >> 8) & 0xFF;
-  var blue = intValue & 0xFF;
-
-  // Return the RGB color values as an array
-  return [red, green, blue];
-}
-
 function processColorPicker(element) {
   var colorValue = document.getElementById(element.id).value;
   var rgb = hexToColor(colorValue);
@@ -86,15 +76,6 @@ function processTextInput(element, event) {
     var offset = document.getElementById(element.id);
     websocket.send(element.id + "=" + offset.value);
   }
-}
-
-function colorToHex(color) {
-  var hexadecimal = color.toString(16);
-  return hexadecimal.length == 1 ? "0" + hexadecimal : hexadecimal;
-}
-
-function convertRGBtoHex(red, green, blue) {
-  return "#" + colorToHex(red) + colorToHex(green) + colorToHex(blue);
 }
 
 function wordConfigFillRow(message) {
@@ -133,7 +114,7 @@ function wordConfigFillRow(message) {
         content.value = ledString;
         break;
       case "color":
-        content.value = "#" + message["color"].toString(16);
+        content.value = "#" + message["color"].toString(16).padStart(6,'0');
         break;
       case "enable":
         content.checked = message["enable"];
@@ -195,7 +176,7 @@ function onMessage(event) {
       if (elem.getAttribute("type") === "checkbox") {
         elem.checked = message[key];
       } else if (elem.getAttribute("type") === "color") {
-        document.getElementById(key).value = "#" + message[key].toString(16);
+        document.getElementById(key).value = "#" + message[key].toString(16).padStart(6, '0');
       } else {
         document.getElementById(key).value = message[key];
       }
@@ -221,11 +202,11 @@ function onMessage(event) {
       var j = 0;
       for (let row of table.rows) {
         for (let cell of row.cells) {
+          color = message[key][j++]
           intColor = parseInt(message[key][j++]);
           if (intColor == 0)
             intColor = 0xFFFFFF;
-          rgb = intToRgbColor(intColor);
-          cell.style.color = convertRGBtoHex(rgb[0], rgb[1], rgb[2]);
+          cell.style.color = "#" + intColor.toString(16).padStart(6, '0');
         }
       }
     }
