@@ -201,7 +201,7 @@ function onMessage(event) {
       }
     }
 
-    if (key === "wordTime") {
+    if (key === "wordTime" || key === "uptime") {
       document.getElementById(key).innerHTML = message[key];
     }
 
@@ -238,8 +238,7 @@ function onMessage(event) {
 }
 
 function createTable(tableData) {
-  var table = document.getElementById('preview');
-  var tableBody = document.createElement('tbody');
+  var tableBody = document.getElementById('previewBody');
   var counter = 1;
 
   tableData.forEach(function (rowData) {
@@ -256,9 +255,6 @@ function createTable(tableData) {
 
     tableBody.appendChild(row);
   });
-
-  table.appendChild(tableBody);
-  document.body.appendChild(table);
 }
 
 function addRow(tableID) {

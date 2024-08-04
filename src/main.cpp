@@ -54,6 +54,7 @@ TimeProcessor *timeProcessor = new TimeProcessor(
 Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
+char startTime[25];
 
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
@@ -302,6 +303,12 @@ void sendMessage(JsonDocument &json) {
   ws.textAll(str);
 }
 
+void sendStarttime() {
+  StaticJsonDocument<64> json;
+  json["uptime"] = startTime;
+  sendMessage(json);
+}
+
 void updateTimeOnWeb() {
   //DynamicJsonDocument json(4096);
   StaticJsonDocument<128> json;
@@ -502,6 +509,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
     if (id == MessageId::GET_VALUES) {
       sendSettingsToWeb();
+      sendStarttime();
       sendWordConfigToWeb(0);
     }
     if (id == MessageId::GET_TIME) {
@@ -689,6 +697,8 @@ unsigned long lastRtcSync = syncRtc;
 u_int32_t updateTimeInterval = 1 * 1000;
 unsigned long lastTimeUpdate = updateTimeInterval;
 
+bool setStartTime = false;
+
 void loop() {
 
   TIME time;
@@ -725,6 +735,10 @@ void loop() {
       return;
     }
     setLeds();
+    if (!setStartTime) {
+      snprintf(startTime, sizeof(startTime), "%02d:%02d:%02d %02d.%02d.%04d", time.hour, time.minute, time.seconds, time.day, time.month, time.year);
+      setStartTime = true;
+    }
     lastTimeUpdate = millis();
   }
 
