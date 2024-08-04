@@ -42,7 +42,9 @@ WiFiUDP ntpUDP;
 RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
-Settings *settings = new Settings(LedWiring::ZIGZAG);
+Settings setting = Settings(LedWiring::ZIGZAG);
+Settings* settings = &setting;
+
 WORD words[MAX_WORDS];
 
 TimeProcessor *timeProcessor = new TimeProcessor(
@@ -244,18 +246,19 @@ void updateSettings() {
                         calcBrightnessScale(numActiveLeds));
 }
 
-String getWordTime() {
+void getWordTime(char* wordTime, uint8_t maxLen) {
   TIMESTACK elem;
   LANGUAGE langKey;
   Timestack *stack = timeProcessor->getStack();
-  String wordTime{""};
+  char* nextWord;
 
   langKey = settings->getLangKey();
+  memset(wordTime, '\0', sizeof(char) * maxLen);
 
   for (uint8_t i = 0; i < stack->getSize(); ++i) {
     if (!stack->get(&elem, i)) {
       error = Error::TIMESTACK_GET_ELEM_FAILED;
-      wordTime = "Error";
+      strcpy(wordTime, "Error");
       break;
     }
 
@@ -263,12 +266,15 @@ String getWordTime() {
       if (words[j].type != elem.state) {
         continue;
       }
-      wordTime += words[j].properties[langKey].name;
-      wordTime += " ";
+      nextWord = words[j].properties[langKey].name;
+      if (strlen(wordTime) + strlen(nextWord) + 2 >= maxLen) {
+        return;
+      }
+      strcat(wordTime, words[j].properties[langKey].name);
+      strcat(wordTime, " ");
       break;
     }
   }
-  return wordTime;
 }
 
 void notifyClients() {
@@ -278,8 +284,6 @@ void notifyClients() {
 }
 
 void serializeLedColor(JsonDocument &json) {
-  String jsonString;
-
   JsonArray array = json.createNestedArray("activeLeds");
 
   for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
@@ -288,20 +292,23 @@ void serializeLedColor(JsonDocument &json) {
 }
 
 void sendMessage(JsonDocument &json) {
-  String str;
+  char str[500];
 
   if (serializeJson(json, str) == 0) {
     Serial.println("Failed to serialize json");
     return;
   }
+  //Serial.println(str);
   ws.textAll(str);
 }
 
 void updateTimeOnWeb() {
-  DynamicJsonDocument json(4096);
-  // StaticJsonDocument<128> json;
-  json["wordTime"] = getWordTime();
-  serializeLedColor(json);
+  //DynamicJsonDocument json(4096);
+  StaticJsonDocument<128> json;
+  char wordTime[MAX_WORDTIME_LENGTH];
+  getWordTime(wordTime, MAX_WORDTIME_LENGTH);
+  json["wordTime"] = wordTime;
+  //serializeLedColor(json);
   sendMessage(json);
 }
 
@@ -320,7 +327,7 @@ void sendSettingsToWeb() {
 
 void sendWordConfigToWeb(uint8_t index) {
   if (index < settings->getMaxWordConfigs()) {
-    StaticJsonDocument<512> json;
+    StaticJsonDocument<JSON_SIZE_WORD_CONFIG> json;
     JsonObject obj = json.createNestedObject("wordConfig");
     settings->getWordConfig()[index].serialize(obj);
     obj["index"] = index;
@@ -349,56 +356,119 @@ bool updateTime(TIME *time) {
   return true;
 }
 
+MessageId getMessageId(const char* message) {
+  char* startAddress;
+  startAddress = strstr(message, "Brightness");
+  if (startAddress == message) {
+    return MessageId::BRIGHTNESS;
+  }
+  startAddress = strstr(message, "useDialect");
+  if (startAddress == message) {
+    return MessageId::DIALECT;
+  }
+  startAddress = strstr(message, "useThreeQuater");
+  if (startAddress == message) {
+    return MessageId::THREE_QUATER;
+  }
+  startAddress = strstr(message, "useQuaterPast");
+  if (startAddress == message) {
+    return MessageId::QUATER_PAST;
+  }
+  startAddress = strstr(message, "useBackgroundColor");
+  if (startAddress == message) {
+    return MessageId::USE_BACKGROUND;
+  }
+  startAddress = strstr(message, "backgroundColor");
+  if (startAddress == message) {
+    return MessageId::BACKGROUND_COLOR;
+  }
+  startAddress = strstr(message, "timeColor");
+  if (startAddress == message) {
+    return MessageId::TIME_COLOR;
+  }
+  startAddress = strstr(message, "utcTimeOffset");
+  if (startAddress == message) {
+    return MessageId::UTC_TIME_OFFSET;
+  }
+  startAddress = strstr(message, "wordConfig");
+  if (startAddress == message) {
+    return MessageId::WORDCONFIG;
+  }
+  startAddress = strstr(message, "finishedWordConfig");
+  if (startAddress == message) {
+    return MessageId::FINISHED_WORDCONFIG;
+  }
+  startAddress = strstr(message, "clearWordConfig");
+  if (startAddress == message) {
+    return MessageId::CLEAR_WORDCONFIG;
+  }
+  startAddress = strstr(message, "continueSendWordConfig");
+  if (startAddress == message) {
+    return MessageId::CONTINUE_SEND_WORDCONFIG;
+  }
+  startAddress = strstr(message, "getValues");
+  if (startAddress == message) {
+    return MessageId::GET_VALUES;
+  }
+  startAddress = strstr(message, "getTime");
+  if (startAddress == message) {
+    return MessageId::GET_TIME;
+  }
+  return MessageId::UNKNOWN;
+}
+
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len &&
       info->opcode == WS_TEXT) {
     data[len] = 0;
-    String message = (char *)data;
-    if (message.indexOf("Brightness") == 0) {
-      int brightness = message.substring(message.indexOf("=") + 1).toInt();
+    const char* message = (char *)data;
+    char* messageBegin = strstr(message, "=");
+    if (messageBegin) {
+      ++messageBegin;
+    }
+    MessageId id = getMessageId(message);
+    if (id == MessageId::BRIGHTNESS) {
+      int brightness = atoi(messageBegin);
       settings->setBrightness(brightness);
       notifyClients();
     }
-    if (message.indexOf("useDialect") == 0) {
-      int dialect = message.substring(message.indexOf("=") + 1).toInt();
+    if (id == MessageId::DIALECT) {
+      int dialect = atoi(messageBegin);
       settings->setUseDialect(dialect > 0);
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("useThreeQuater") == 0) {
-      int threeQuater = message.substring(message.indexOf("=") + 1).toInt();
+    if (id == MessageId::THREE_QUATER) {
+      int threeQuater = atoi(messageBegin);
       settings->setUseThreeQuater(threeQuater > 0);
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("useQuaterPast") == 0) {
-      int quaterPast = message.substring(message.indexOf("=") + 1).toInt();
+    if (id == MessageId::QUATER_PAST) {
+      int quaterPast = atoi(messageBegin);
       settings->setUseQuaterPast(quaterPast > 0);
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("useBackgroundColor") == 0) {
-      int useBackgroundColor =
-          message.substring(message.indexOf("=") + 1).toInt();
+    if (id == MessageId::USE_BACKGROUND) {
+      int useBackgroundColor = atoi(messageBegin);
       settings->setUseBackgroundColor(useBackgroundColor > 0);
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("backgroundColor") == 0) {
-      String backgroundColorStr = message.substring(message.indexOf("=") + 1);
-      settings->setBackgroundColor(backgroundColorStr);
+    if (id == MessageId::BACKGROUND_COLOR) {
+      settings->setBackgroundColor(messageBegin);
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("timeColor") == 0) {
-      String timeColorStr = message.substring(message.indexOf("=") + 1);
-      settings->setTimeColor(timeColorStr);
+    if (id == MessageId::TIME_COLOR) {
+      settings->setTimeColor(messageBegin);
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("utcTimeOffset") == 0) {
-      int offset = message.substring(message.indexOf("=") + 1).toInt();
+    if (id == MessageId::UTC_TIME_OFFSET) {
+      int offset = atoi(messageBegin);
       settings->setUtcHourOffset(offset);
       if (adjustSummertime(&rtc, &timeClient, offset, wifiConnected) != true) {
         Serial.println("Failed to adjust time");
@@ -411,32 +481,30 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       notifyClients();
       updateTimeOnWeb();
     }
-    if (message.indexOf("wordConfig") == 0) {
-      String wordConfig = message.substring(message.indexOf("=") + 1);
+    if (id == MessageId::WORDCONFIG) {
       Serial.println("Set word config");
-      settings->setWordConfig(wordConfig);
+      settings->setWordConfig(messageBegin);
       continueWordConfig();
     }
-    if (message.indexOf("finishedWordConfig") == 0) {
+    if (id == MessageId::FINISHED_WORDCONFIG) {
       notifyClients();
       settings->saveWordConfig();
-      sendWordConfigToWeb(0);
       updateTimeOnWeb();
     }
-    if (message.indexOf("clearWordConfig") == 0) {
+    if (id == MessageId::CLEAR_WORDCONFIG) {
       Serial.println("Clear word config");
       settings->clearWordConfig();
     }
-    if (message.indexOf("continueSendWordConfig") == 0) {
-      uint8_t index = message.substring(message.indexOf("=") + 1).toInt();
+    if (id == MessageId::CONTINUE_SEND_WORDCONFIG) {
+      uint8_t index = atoi(messageBegin);
       sendWordConfigToWeb(index);
     }
 
-    if (strcmp((char *)data, "getValues") == 0) {
+    if (id == MessageId::GET_VALUES) {
       sendSettingsToWeb();
       sendWordConfigToWeb(0);
     }
-    if (strcmp((char *)data, "getTime") == 0) {
+    if (id == MessageId::GET_TIME) {
       updateTimeOnWeb();
     }
   }
@@ -507,7 +575,6 @@ LANGUAGE getLanguageKey(const char *name) {
 void loadWordConfig() {
   File file = LittleFS.open("/words.json", "r");
   uint8_t i{0};
-  uint8_t k{0};
   LANGUAGE lang;
   if (!file) {
     Serial.println("words.json not found!");
@@ -537,7 +604,7 @@ void loadWordConfig() {
       for (JsonPair props : kv.value().as<JsonObject>()) {
         JsonObject langProperties = props.value().as<JsonObject>();
         lang = getLanguageKey(props.key().c_str());
-        words[i].properties[lang].name = langProperties["name"].as<String>();
+        strcpy(words[i].properties[lang].name, langProperties["name"].as<const char*>());
         words[i].properties[lang].startPixel =
             langProperties["startPixel"].as<uint16_t>();
         words[i].properties[lang].length =

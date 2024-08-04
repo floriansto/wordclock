@@ -35,10 +35,10 @@ public:
   void deserializeBasic(JsonObject &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
-  void setTimeColor(String &rgbColor);
-  void setBackgroundColor(String &rgbColor);
+  void setTimeColor(const char* rgbColor);
+  void setBackgroundColor(const char* rgbColor);
   COLOR_RGB getBackgroundColor();
-  void setWordConfig(String &wordConfig);
+  void setWordConfig(const char* wordConfig);
   WordConfig* getWordConfig();
   COLOR_RGB getTimeColor();
   LANGUAGE getLangKey();

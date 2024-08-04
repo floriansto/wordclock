@@ -5,6 +5,8 @@
 #include <RTClib.h>
 
 #define MAX_WORDS 25
+#define MAX_WORD_LENGTH 15
+#define MAX_WORDTIME_LENGTH 40
 
 typedef struct _time {
   u_int8_t hour;
@@ -32,6 +34,24 @@ enum class Error {
   CYCLE_TIME_VIOLATION,
 };
 
+enum class MessageId {
+  UNKNOWN,
+  BRIGHTNESS,
+  DIALECT,
+  THREE_QUATER,
+  QUATER_PAST,
+  USE_BACKGROUND,
+  BACKGROUND_COLOR,
+  TIME_COLOR,
+  UTC_TIME_OFFSET,
+  WORDCONFIG,
+  FINISHED_WORDCONFIG,
+  CLEAR_WORDCONFIG,
+  CONTINUE_SEND_WORDCONFIG,
+  GET_VALUES,
+  GET_TIME,
+};
+
 typedef enum _language { DE, DE_DIALECT, MAX_LANGUAGES } LANGUAGE;
 
 #define language_list(F)                                                       \
@@ -46,7 +66,7 @@ typedef enum _language { DE, DE_DIALECT, MAX_LANGUAGES } LANGUAGE;
 #define map_lang_string_to_enum language_list(lang_key_from_value)
 
 typedef struct _word_properties {
-  String name;
+  char name[MAX_WORD_LENGTH];
   uint16_t startPixel;
   uint8_t length;
 } WORD_PROPERTIES;

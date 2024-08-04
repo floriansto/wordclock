@@ -1,6 +1,19 @@
 #include "../include/wordConfig.h"
 
-WordConfig::WordConfig() {}
+WordConfig::WordConfig() {
+  this->enabled = false;
+  this->timeEnabled = false;
+  this->color.r = 0;
+  this->color.g = 0;
+  this->color.b = 0;
+  this->when = ALWAYS;
+  this->date.day = 0;
+  this->date.month = 0;
+  this->valid = false;
+  for (uint8_t i = 0; i < MAX_LED_ENTRIES; ++i) {
+    this->leds[i] = 0;
+  }
+}
 
 boolean WordConfig::isWordConfigActive(uint16_t day, uint8_t month) {
   return this->enabled &&

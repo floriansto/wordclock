@@ -63,7 +63,9 @@ sint8_t Settings::getUtcHourOffset() { return this->utcTimeOffset; }
 WordConfig* Settings::getWordConfig() { return this->wordConfig; }
 
 void Settings::clearWordConfig() {
-  memset(this->wordConfig, 0, sizeof(this->wordConfig));
+  for (uint8_t i = 0; i < MAX_WORD_CONFIGS; ++i) {
+    this->wordConfig[i] = WordConfig();
+  }
   this->maxWordConfigs = 0;
 }
 
@@ -73,7 +75,7 @@ COLOR_RGB getColor(JsonArray color) {
 
 uint8_t Settings::getMaxWordConfigs() {return this->maxWordConfigs; }
 
-void Settings::setWordConfig(String &wordConfig) {
+void Settings::setWordConfig(const char* wordConfig) {
   StaticJsonDocument<JSON_SIZE_WORD_CONFIG> config;
   uint32_t leds[MAX_LED_ENTRIES];
 
@@ -108,7 +110,7 @@ void Settings::setWordConfig(String &wordConfig) {
   Serial.println("Deserialize wordconfig: success");
 }
 
-COLOR_RGB stringToColor(String &rgbColor) {
+COLOR_RGB stringToColor(const char* rgbColor) {
   StaticJsonDocument<64> config;
 
   DeserializationError error = deserializeJson(config, rgbColor);
@@ -121,11 +123,11 @@ COLOR_RGB stringToColor(String &rgbColor) {
   return getColor(config.as<JsonArray>());
 }
 
-void Settings::setTimeColor(String &rgbColor) {
+void Settings::setTimeColor(const char* rgbColor) {
   this->timeColor = stringToColor(rgbColor);
 }
 
-void Settings::setBackgroundColor(String &rgbColor) {
+void Settings::setBackgroundColor(const char* rgbColor) {
   this->backgroundColor = stringToColor(rgbColor);
 }
 
