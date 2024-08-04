@@ -7,6 +7,14 @@
 #define NUMPIXELS (COL_PIXELS * ROW_PIXELS)
 #define BITMASK_LENGTH 32
 
+enum class FirstLedPosition {
+  TopLeft,
+  TopRight,
+  BottomLeft,
+  BottomRight,
+};
+
+const FirstLedPosition firstLedPosition = FirstLedPosition::TopLeft;
 const double maxCurrentAll = 3000.0;
 const double maxCurrentPerLed = 50;
 const u_int8_t cycleTimeMs = 10;

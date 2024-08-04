@@ -5,18 +5,13 @@
 #include "../include/wordConfig.h"
 #include "../include/main.h"
 
-#define MAX_WORD_CONFIGS 100
+#define MAX_WORD_CONFIGS 15
 #define JSON_SIZE_WORD_CONFIG 384
 #define JSON_SIZE_SETTINGS 256
 
-enum class LedWiring {
-  ZIGZAG,
-  MATRIX,
-};
-
 class Settings {
 public:
-  Settings(LedWiring ledWiring);
+  Settings();
   void setUseDialect(bool useDialect);
   bool getUseDialect();
   void setUseThreeQuater(bool useThreeQuater);
@@ -42,7 +37,6 @@ public:
   WordConfig* getWordConfig();
   COLOR_RGB getTimeColor();
   LANGUAGE getLangKey();
-  LedWiring getLedWiring();
   void clearWordConfig();
   uint8_t getMaxWordConfigs();
 
@@ -55,7 +49,6 @@ private:
   COLOR_RGB backgroundColor;
   COLOR_RGB timeColor;
   uint8_t utcTimeOffset;
-  LedWiring ledwiring;
   WordConfig wordConfig[MAX_WORD_CONFIGS];
   uint8_t maxWordConfigs;
 };

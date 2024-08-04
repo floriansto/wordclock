@@ -42,7 +42,7 @@ WiFiUDP ntpUDP;
 RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
-Settings setting = Settings(LedWiring::ZIGZAG);
+Settings setting = Settings();
 Settings* settings = &setting;
 
 WORD words[MAX_WORDS];
@@ -54,7 +54,7 @@ TimeProcessor *timeProcessor = new TimeProcessor(
 Error error = Error::OK;
 bool wifiConnected = false;
 u_int16_t numActiveLeds = NUMPIXELS;
-char startTime[25];
+char startTime[30];
 
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
@@ -76,6 +76,22 @@ void printColor(CRGB *color) {
 }
 #endif
 
+uint16_t mirrorLedHorizontal(uint16_t led) {
+  return COL_PIXELS - (led % COL_PIXELS) +
+         COL_PIXELS * (uint16_t)(led / COL_PIXELS) - 1;
+}
+
+uint16_t mirrorLedVertical(uint16_t led) {
+  uint16_t rowsAbove = ROW_PIXELS - (uint16_t)(led / COL_PIXELS) - 1;
+  uint16_t ledInRow = COL_PIXELS - (led % COL_PIXELS);
+  if (rowsAbove % 2 == 1) {
+    ledInRow = COL_PIXELS - (led % COL_PIXELS) - 1;
+  } else {
+    ledInRow = led % COL_PIXELS;
+  }
+  return rowsAbove *  COL_PIXELS + ledInRow;
+}
+
 /**
  * Map the led number from the configuration file to the
  * led index on the led strip.
@@ -85,14 +101,23 @@ void printColor(CRGB *color) {
  * read a book: Top left is zero, after the first row begin
  * the next row on the left again.
  */
-u_int16_t mapLedIndex(u_int16_t led) {
+uint16_t mapLedIndex(uint16_t led) {
   /* Map led index depending on the wiring of the led strip*/
-  switch (settings->getLedWiring()) {
-  case LedWiring::ZIGZAG:
-    if ((int(led / COL_PIXELS)) % 2 == 0)
+  switch (firstLedPosition) {
+  case FirstLedPosition::TopLeft:
+    if ((uint8_t(led / COL_PIXELS)) % 2 == 0) {
       return led;
-    return COL_PIXELS - (led % COL_PIXELS) +
-           COL_PIXELS * (int)(led / COL_PIXELS) - 1;
+    }
+    return mirrorLedHorizontal(led);
+  case FirstLedPosition::TopRight:
+    if ((uint8_t(led / COL_PIXELS)) % 2 == 1) {
+      return led;
+    }
+    return mirrorLedHorizontal(led);
+  case FirstLedPosition::BottomLeft:
+    return mirrorLedVertical(led);
+  case FirstLedPosition::BottomRight:
+    return mirrorLedHorizontal(mirrorLedVertical(led));
   default:
     return led;
   }

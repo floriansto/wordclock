@@ -7,7 +7,7 @@
 #include "../include/wordConfig.h"
 #include "../include/main.h"
 
-Settings::Settings(LedWiring ledWiring) {
+Settings::Settings() {
   this->timeColor = COLOR_RGB{252, 184, 33};
   this->backgroundColor = COLOR_RGB{55, 55, 55};
   this->brightness = 50;
@@ -16,11 +16,8 @@ Settings::Settings(LedWiring ledWiring) {
   this->useQuaterPast = true;
   this->useBackgroundColor = true;
   this->utcTimeOffset = 1;
-  this->ledwiring = ledWiring;
   this->maxWordConfigs = 0;
 }
-
-LedWiring Settings::getLedWiring() { return this->ledwiring; }
 
 void Settings::setUseDialect(bool useDialect) {
   this->useDialect = useDialect;
