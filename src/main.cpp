@@ -542,7 +542,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     break;
   }
   case MessageId::WORDCONFIG: {
-    Serial.println("Set word config");
     settings->setWordConfig(messageBegin);
     continueWordConfig();
     break;
@@ -554,7 +553,6 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     break;
   }
   case MessageId::CLEAR_WORDCONFIG: {
-    Serial.println("Clear word config");
     settings->clearWordConfig();
     break;
   }

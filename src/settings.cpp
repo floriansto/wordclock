@@ -104,7 +104,6 @@ void Settings::setWordConfig(const char* wordConfig) {
   this->wordConfig[maxWordConfigs].setValid(true);
 
   ++maxWordConfigs;
-  Serial.println("Deserialize wordconfig: success");
 }
 
 COLOR_RGB stringToColor(const char* rgbColor) {
