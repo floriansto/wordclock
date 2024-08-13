@@ -14,7 +14,7 @@ enum class FirstLedPosition {
   BottomRight,
 };
 
-const FirstLedPosition firstLedPosition = FirstLedPosition::TopLeft;
+const FirstLedPosition firstLedPosition = FirstLedPosition::BottomLeft;
 const double maxCurrentAll = 3000.0;
 const double maxCurrentPerLed = 50;
 const u_int8_t cycleTimeMs = 10;
