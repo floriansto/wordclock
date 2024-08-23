@@ -167,3 +167,11 @@ The following keys are needed:
 * REL_ZEHN
 * UNBEKANNT
 
+# Todos
+
+ * Release building instructions
+   * How to create the frontplate
+   * How to build the wooden frame
+ * Draw circuit diagram
+ * Release CAD files
+ * Cleanup the sourcecode
