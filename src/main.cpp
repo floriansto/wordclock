@@ -149,9 +149,10 @@ void setLeds() {
   memset(customColor, false, sizeof(customColor));
   memset(targetColor, 0, sizeof(targetColor));
 
+  time = getTime(&rtc, &timeClient, wifiConnected);
   wordConfig = settings->getWordConfig();
   for (uint8_t k = 0; k < settings->getMaxWordConfigs(); ++k) {
-    if (!wordConfig[k].isEnabled()) {
+    if (!wordConfig[k].isWordConfigActive(time.day, time.month)) {
       continue;
     }
     if (!wordConfig[k].showTime()) {
@@ -186,9 +187,8 @@ void setLeds() {
     }
   }
 
-  time = getTime(&rtc, &timeClient, wifiConnected);
   for (uint8_t k = 0; k < settings->getMaxWordConfigs(); ++k) {
-    if (!wordConfig[k].isEnabled()) {
+    if (!wordConfig[k].isWordConfigActive(time.day, time.month)) {
       continue;
     }
 
