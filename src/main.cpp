@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -28,9 +28,10 @@
 
 #define DEBUG 0
 
-CRGB leds[NUMPIXELS];
-CRGB oldColor[NUMPIXELS];
-CRGB newColor[NUMPIXELS];
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+COLOR_RGB oldColor[NUMPIXELS];
+COLOR_RGB newColor[NUMPIXELS];
 double interpolationTime[NUMPIXELS];
 
 AsyncWebServer server(80);
@@ -127,17 +128,17 @@ uint16_t mapLedIndex(uint16_t led) {
  * Set new target and start led colors for a given time
  */
 void setLeds() {
-  u_int32_t timeColor = rgbToHex(settings->getTimeColor());
-  u_int32_t background = rgbToHex(settings->getBackgroundColor());
+  COLOR_RGB timeColor = settings->getTimeColor();
+  COLOR_RGB background = settings->getBackgroundColor();
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   LANGUAGE langKey;
   JsonArray wordPixels;
   u_int16_t led;
-  CRGB timeColorRgb = timeColor;
-  CRGB backgroundRgb = background;
-  CRGB customColorRgb;
-  CRGB targetColor[NUMPIXELS];
+  COLOR_RGB timeColorRgb = timeColor;
+  COLOR_RGB backgroundRgb = background;
+  COLOR_RGB customColorRgb;
+  COLOR_RGB targetColor[NUMPIXELS];
   bool timeLeds[NUMPIXELS];
   bool customColor[NUMPIXELS];
   bool showTime = true;
@@ -178,7 +179,7 @@ void setLeds() {
           /* Set the color for each active pixel */
           timeLeds[led] = true;
           if (newColor[led] != timeColorRgb) {
-            oldColor[led] = leds[led];
+            oldColor[led] = pixels.getPixelColor(led);
             interpolationTime[led] = 0.0;
           }
           newColor[led] = timeColor;
@@ -203,7 +204,7 @@ void setLeds() {
         }
         customColor[led] = true;
         customColorRgb = wordConfig[k].getColor();
-        targetColor[led] = rgbToHex(customColorRgb);
+        targetColor[led] = customColorRgb;
       }
     }
   }
@@ -215,7 +216,7 @@ void setLeds() {
     if (targetColor[i] == newColor[i]) {
       continue;
     }
-    oldColor[i] = leds[i];
+    oldColor[i] = pixels.getPixelColor(i);
     newColor[i] = targetColor[i];
     interpolationTime[i] = 0.0;
   }
@@ -229,16 +230,16 @@ void setLeds() {
       continue;
     }
     newColor[i] = backgroundRgb;
-    oldColor[i] = leds[i];
+    oldColor[i] = pixels.getPixelColor(i);
     interpolationTime[i] = 0.0;
   }
 }
 
 void interpolateLeds() {
   u_int16_t interpolationDuration = 2000;
-  CRGB prevCol1{0, 0, 0};
-  CRGB prevCol2{0, 0, 0};
-  u_int32_t c = 0x0;
+  COLOR_RGB prevCol1{0, 0, 0};
+  COLOR_RGB prevCol2{0, 0, 0};
+  COLOR_RGB c{0, 0, 0};
   bool equal{false};
   double t;
   for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
@@ -255,9 +256,9 @@ void interpolateLeds() {
     }
     if (!equal) {
       t = interpolationTime[i] / interpolationDuration;
-      c = rgb_interp(rgbToHex(oldColor[i]), rgbToHex(newColor[i]), t);
+      c = hexToRgb(rgb_interp(rgbToHex(oldColor[i]), rgbToHex(newColor[i]), t));
     }
-    leds[i] = CRGB{c};
+    pixels.setPixelColor(i, pixels.Color(c.r, c.g, c.b));
     interpolationTime[i] += cycleTimeMs;
     equal = true;
   }
@@ -268,7 +269,7 @@ void updateSettings() {
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
-  FastLED.setBrightness(settings->getBrightness() / 100.0 *
+  pixels.setBrightness(settings->getBrightness() / 100.0 *
                         calcBrightnessScale(numActiveLeds));
 }
 
@@ -705,13 +706,9 @@ void setup() {
   Wire.begin(D2, D1);
 
   /* Setup ledsrip */
-  FastLED.addLeds<NEOPIXEL, PIN>(leds, NUMPIXELS);
-  memset(leds, 0, sizeof(leds));
+  pixels.begin();
   memset(oldColor, 0, sizeof(oldColor));
   memset(newColor, 0, sizeof(newColor));
-  FastLED.setBrightness(64);
-  FastLED.clear();
-  FastLED.show();
 
   memset(interpolationTime, 0, sizeof(interpolationTime));
 
@@ -745,7 +742,7 @@ void setup() {
     Serial.println("Configportal at 192.168.4.1 running");
   }
   setLeds();
-  FastLED.show();
+  pixels.show();
   Serial.print("Settings size: ");
   Serial.println(sizeof(Settings));
   Serial.print("words size: ");
@@ -779,9 +776,9 @@ void loop() {
   /* Display all red leds in red in case of an error. */
   if (error != Error::OK) {
     for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
-      leds[i] = 0xFF0000;
+      pixels.setPixelColor(i, pixels.Color(255, 0, 0));
     }
-    FastLED.show();
+    pixels.show();
     Serial.println("Error detected");
     return;
   }
@@ -833,7 +830,7 @@ void loop() {
   }
 
   interpolateLeds();
-  FastLED.show();
+  pixels.show();
 
   unsigned long end = millis();
 

@@ -2,13 +2,28 @@
 #define __COLOR_H__
 
 #include <Arduino.h>
-#include <FastLED.h>
 
-//struct COLOR_RGB {
-  //u_int8_t r, g, b;
-//};
+struct COLOR_RGB {
+  u_int8_t r, g, b;
 
-#define COLOR_RGB CRGB
+  inline COLOR_RGB &operator=(const uint32_t hexColor)
+      __attribute__((always_inline)) {
+    r = (hexColor >> 16) & 0xFF;
+    g = (hexColor >> 8) & 0xFF;
+    b = (hexColor >> 0) & 0xFF;
+    return *this;
+  }
+};
+
+inline __attribute__((always_inline)) bool operator==(const COLOR_RGB &a,
+                                                      const COLOR_RGB &b) {
+  return (a.r == b.r) && (a.g == b.g) && (a.b == b.b);
+}
+
+inline __attribute__((always_inline)) bool operator!=(const COLOR_RGB &a,
+                                                      const COLOR_RGB &b) {
+  return !(a == b);
+}
 
 struct LCH {
   double l, c, h;
