@@ -42,7 +42,7 @@ function onClose(event) {
 function updateSliderBrightness(element) {
   var sliderValue = document.getElementById(element.id).value;
   document.getElementById(element.id + "Display").innerHTML = sliderValue;
-  websocket.send("Brightness=" + sliderValue.toString());
+  websocket.send(element.id + "=" + sliderValue.toString());
 }
 
 function getTime() {

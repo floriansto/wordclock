@@ -51,6 +51,12 @@ void Settings::setBrightness(uint8_t brightness) {
   this->brightness = brightness;
 }
 
+uint8_t Settings::getBackgroundBrightness() { return this->backgroundBrightness; }
+
+void Settings::setBackgroundBrightness(uint8_t brightness) {
+  this->backgroundBrightness = brightness;
+}
+
 void Settings::setUtcHourOffset(sint8_t offset) {
   this->utcTimeOffset = offset;
 }
@@ -138,6 +144,7 @@ COLOR_RGB Settings::getTimeColor() { return this->timeColor; }
 
 void Settings::serializeBasic(JsonObject &json) {
   json["brightness"] = this->brightness;
+  json["backgroundBrightness"] = this->backgroundBrightness;
   json["useDialect"] = this->useDialect;
   json["useQuaterPast"] = this->useQuaterPast;
   json["useThreeQuater"] = this->useThreeQuater;
@@ -149,6 +156,7 @@ void Settings::serializeBasic(JsonObject &json) {
 
 void Settings::deserializeBasic(JsonObject &json) {
   this->brightness = json["brightness"];
+  this->backgroundBrightness = json["backgroundBrightness"];
   this->useDialect = json["useDialect"];
   this->useQuaterPast = json["useQuaterPast"];
   this->useThreeQuater = json["useThreeQuater"];

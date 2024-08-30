@@ -121,6 +121,16 @@ uint16_t mapLedIndex(uint16_t led) {
   }
 }
 
+double calcBrightness(uint8_t brightnessSetting) {
+  return brightnessSetting / 100.0 * calcBrightnessScale(numActiveLeds);
+}
+
+void setPixelBrightness() {
+  pixels.setBrightness(calcBrightness(settings->getBrightness()));
+  pixels.setBrightness(calcBrightness(settings->getBackgroundBrightness()),
+                       PixelType::Background);
+}
+
 /**
  * Set new target and start led colors for a given time
  */
@@ -151,21 +161,23 @@ void setLeds() {
     pixels.setPixelType(i, PixelType::Background);
   }
 
-  for (u_int16_t i = 0; i < stack->getSize(); ++i) {
-    /* Get the word key for each stack element */
-    if (!stack->get(&elem, i)) {
-      error = Error::TIMESTACK_GET_ELEM_FAILED;
-      return;
-    }
-
-    for (uint8_t j = 0; j < MAX_WORDS; ++j) {
-      if (words[j].type != elem.state) {
-        continue;
+  if (showTime) {
+    for (u_int16_t i = 0; i < stack->getSize(); ++i) {
+      /* Get the word key for each stack element */
+      if (!stack->get(&elem, i)) {
+        error = Error::TIMESTACK_GET_ELEM_FAILED;
+        return;
       }
-      /* Get the active pixels for the current word */
-      for (uint8_t k = 0; k < words[j].properties[langKey].length; ++k) {
-        led = mapLedIndex(k + words[j].properties[langKey].startPixel);
-        pixels.setPixelType(led, PixelType::Time);
+
+      for (uint8_t j = 0; j < MAX_WORDS; ++j) {
+        if (words[j].type != elem.state) {
+          continue;
+        }
+        /* Get the active pixels for the current word */
+        for (uint8_t k = 0; k < words[j].properties[langKey].length; ++k) {
+          led = mapLedIndex(k + words[j].properties[langKey].startPixel);
+          pixels.setPixelType(led, PixelType::Time);
+        }
       }
     }
   }
@@ -192,6 +204,7 @@ void setLeds() {
 
   pixels.setColor(settings->getTimeColor(), PixelType::Time);
   pixels.setColor(settings->getBackgroundColor(), PixelType::Background);
+  setPixelBrightness();
   pixels.update();
 }
 
@@ -200,8 +213,7 @@ void updateSettings() {
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
-  pixels.setBrightness(settings->getBrightness() / 100.0 *
-                       calcBrightnessScale(numActiveLeds));
+  setPixelBrightness();
   pixels.show();
 }
 
@@ -330,9 +342,13 @@ bool updateTime(TIME *time) {
 
 MessageId getMessageId(const char *message) {
   char *startAddress;
-  startAddress = strstr(message, "Brightness");
+  startAddress = strstr(message, "brightness");
   if (startAddress == message) {
     return MessageId::BRIGHTNESS;
+  }
+  startAddress = strstr(message, "backgroundBrightness");
+  if (startAddress == message) {
+    return MessageId::BACKGROUND_BRIGHTNESS;
   }
   startAddress = strstr(message, "useDialect");
   if (startAddress == message) {
@@ -410,6 +426,12 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   case MessageId::BRIGHTNESS: {
     int brightness = atoi(messageBegin);
     settings->setBrightness(brightness);
+    notifyClients();
+    break;
+  }
+  case MessageId::BACKGROUND_BRIGHTNESS: {
+    int brightness = atoi(messageBegin);
+    settings->setBackgroundBrightness(brightness);
     notifyClients();
     break;
   }

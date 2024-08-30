@@ -37,6 +37,7 @@ enum class Error {
 enum class MessageId {
   UNKNOWN,
   BRIGHTNESS,
+  BACKGROUND_BRIGHTNESS,
   DIALECT,
   THREE_QUATER,
   QUATER_PAST,

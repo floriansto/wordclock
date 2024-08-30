@@ -7,7 +7,7 @@
 
 #define MAX_WORD_CONFIGS 15
 #define JSON_SIZE_WORD_CONFIG 384
-#define JSON_SIZE_SETTINGS 256
+#define JSON_SIZE_SETTINGS 384
 #define JSON_SIZE_PREVIEW 512
 #define PREVIEW_LEDS 14
 
@@ -24,6 +24,8 @@ public:
   bool getUseBackgroundColor();
   void setBrightness(uint8_t brightness);
   uint8_t getBrightness();
+  void setBackgroundBrightness(uint8_t brightness);
+  uint8_t getBackgroundBrightness();
   void loadSettings();
   void saveSettings();
   void saveWordConfig();
@@ -44,6 +46,7 @@ public:
 
 private:
   uint8_t brightness;
+  uint8_t backgroundBrightness;
   bool useDialect;
   bool useThreeQuater;
   bool useQuaterPast;
