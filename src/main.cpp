@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <Adafruit_NeoPixel.h>
 
 #if defined(ESP8266)
 #include <ESP8266WiFi.h>
@@ -21,6 +20,8 @@
 #include "../include/color.h"
 #include "../include/hw_settings.h"
 #include "../include/main.h"
+#include "../include/neopixel.h"
+#include "../include/pixel.h"
 #include "../include/settings.h"
 #include "../include/timeUtils.h"
 #include "../include/wordConfig.h"
@@ -28,11 +29,7 @@
 
 #define DEBUG 0
 
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
-COLOR_RGB oldColor[NUMPIXELS];
-COLOR_RGB newColor[NUMPIXELS];
-double interpolationTime[NUMPIXELS];
+NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -60,9 +57,9 @@ char startTime[30];
 double calcBrightnessScale(u_int16_t activeLeds) {
   double maxCurrent = maxCurrentPerLed * (double)activeLeds;
   if (maxCurrent < maxCurrentAll) {
-    return 255.0;
+    return 1.0;
   }
-  return 255.0 * maxCurrentAll / maxCurrent;
+  return maxCurrentAll / maxCurrent;
 }
 
 #if DEBUG
@@ -128,27 +125,15 @@ uint16_t mapLedIndex(uint16_t led) {
  * Set new target and start led colors for a given time
  */
 void setLeds() {
-  COLOR_RGB timeColor = settings->getTimeColor();
-  COLOR_RGB background = settings->getBackgroundColor();
   Timestack *stack = timeProcessor->getStack();
   TIMESTACK elem;
   LANGUAGE langKey;
-  JsonArray wordPixels;
-  u_int16_t led;
-  COLOR_RGB timeColorRgb = timeColor;
-  COLOR_RGB backgroundRgb = background;
-  COLOR_RGB customColorRgb;
-  COLOR_RGB targetColor[NUMPIXELS];
-  bool timeLeds[NUMPIXELS];
-  bool customColor[NUMPIXELS];
+  uint16_t led;
   bool showTime = true;
   TIME time;
   WordConfig *wordConfig;
 
   langKey = settings->getLangKey();
-  memset(timeLeds, false, sizeof(timeLeds));
-  memset(customColor, false, sizeof(customColor));
-  memset(targetColor, 0, sizeof(targetColor));
 
   time = getTime(&rtc, &timeClient, wifiConnected);
   wordConfig = settings->getWordConfig();
@@ -161,29 +146,26 @@ void setLeds() {
     }
   }
 
-  if (showTime) {
-    for (u_int16_t i = 0; i < stack->getSize(); ++i) {
-      /* Get the word key for each stack element */
-      if (!stack->get(&elem, i)) {
-        error = Error::TIMESTACK_GET_ELEM_FAILED;
-        return;
-      }
+  /* Set all pixels to background */
+  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
+    pixels.setPixelType(i, PixelType::Background);
+  }
 
-      for (uint8_t j = 0; j < MAX_WORDS; ++j) {
-        if (words[j].type != elem.state) {
-          continue;
-        }
-        /* Get the active pixels for the current word */
-        for (uint8_t k = 0; k < words[j].properties[langKey].length; ++k) {
-          led = mapLedIndex(k + words[j].properties[langKey].startPixel);
-          /* Set the color for each active pixel */
-          timeLeds[led] = true;
-          if (newColor[led] != timeColorRgb) {
-            oldColor[led] = pixels.getPixelColor(led);
-            interpolationTime[led] = 0.0;
-          }
-          newColor[led] = timeColor;
-        }
+  for (u_int16_t i = 0; i < stack->getSize(); ++i) {
+    /* Get the word key for each stack element */
+    if (!stack->get(&elem, i)) {
+      error = Error::TIMESTACK_GET_ELEM_FAILED;
+      return;
+    }
+
+    for (uint8_t j = 0; j < MAX_WORDS; ++j) {
+      if (words[j].type != elem.state) {
+        continue;
+      }
+      /* Get the active pixels for the current word */
+      for (uint8_t k = 0; k < words[j].properties[langKey].length; ++k) {
+        led = mapLedIndex(k + words[j].properties[langKey].startPixel);
+        pixels.setPixelType(led, PixelType::Time);
       }
     }
   }
@@ -199,69 +181,18 @@ void setLeds() {
           continue;
         }
         led = mapLedIndex(j + (BITMASK_LENGTH * i));
-        if (timeLeds[led]) {
+        if (pixels.getPixelType(led) == PixelType::Time && showTime) {
           continue;
         }
-        customColor[led] = true;
-        customColorRgb = wordConfig[k].getColor();
-        targetColor[led] = customColorRgb;
+        pixels.setPixelType(led, PixelType::CustomWord);
+        pixels.setColor(led, wordConfig[k].getColor());
       }
     }
   }
 
-  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
-    if (!customColor[i]) {
-      continue;
-    }
-    if (targetColor[i] == newColor[i]) {
-      continue;
-    }
-    oldColor[i] = pixels.getPixelColor(i);
-    newColor[i] = targetColor[i];
-    interpolationTime[i] = 0.0;
-  }
-
-  /* Fill all non time relevant leds with the background color */
-  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
-    if (timeLeds[i] || customColor[i]) {
-      continue;
-    }
-    if (newColor[i] == backgroundRgb) {
-      continue;
-    }
-    newColor[i] = backgroundRgb;
-    oldColor[i] = pixels.getPixelColor(i);
-    interpolationTime[i] = 0.0;
-  }
-}
-
-void interpolateLeds() {
-  u_int16_t interpolationDuration = 2000;
-  COLOR_RGB prevCol1{0, 0, 0};
-  COLOR_RGB prevCol2{0, 0, 0};
-  COLOR_RGB c{0, 0, 0};
-  bool equal{false};
-  double t;
-  for (u_int16_t i = 0; i < NUMPIXELS; ++i) {
-    if (interpolationTime[i] > interpolationDuration) {
-      continue;
-    }
-    if (prevCol1 != oldColor[i]) {
-      prevCol1 = oldColor[i];
-      equal = false;
-    }
-    if (prevCol2 != newColor[i]) {
-      prevCol2 = newColor[i];
-      equal = false;
-    }
-    if (!equal) {
-      t = interpolationTime[i] / interpolationDuration;
-      c = hexToRgb(rgb_interp(rgbToHex(oldColor[i]), rgbToHex(newColor[i]), t));
-    }
-    pixels.setPixelColor(i, pixels.Color(c.r, c.g, c.b));
-    interpolationTime[i] += cycleTimeMs;
-    equal = true;
-  }
+  pixels.setColor(settings->getTimeColor(), PixelType::Time);
+  pixels.setColor(settings->getBackgroundColor(), PixelType::Background);
+  pixels.update();
 }
 
 void updateSettings() {
@@ -270,7 +201,8 @@ void updateSettings() {
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
   pixels.setBrightness(settings->getBrightness() / 100.0 *
-                        calcBrightnessScale(numActiveLeds));
+                       calcBrightnessScale(numActiveLeds));
+  pixels.show();
 }
 
 void getWordTime(char *wordTime, uint8_t maxLen) {
@@ -335,7 +267,8 @@ void sendPreviewToWeb(uint8_t startIdx) {
       break;
     }
     char hexColor[7];
-    snprintf(hexColor, sizeof(hexColor), "%06X", rgbToHex(newColor[mapLedIndex(i)]));
+    snprintf(hexColor, sizeof(hexColor), "%06X",
+             rgbToHex(pixels.getTargetColor(mapLedIndex(i))));
     leds.add(hexColor);
   }
   json["activeLeds"]["startIdx"] = startIdx;
@@ -707,10 +640,6 @@ void setup() {
 
   /* Setup ledsrip */
   pixels.begin();
-  memset(oldColor, 0, sizeof(oldColor));
-  memset(newColor, 0, sizeof(newColor));
-
-  memset(interpolationTime, 0, sizeof(interpolationTime));
 
   /* Initialize filesystem */
   initFS();
@@ -776,11 +705,10 @@ void loop() {
   /* Display all red leds in red in case of an error. */
   if (error != Error::OK) {
     for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
-      pixels.setPixelColor(i, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(i, 0xFF0000);
     }
     pixels.show();
     Serial.println("Error detected");
-    return;
   }
 
   /* Start webserver and ntp time when wifi was not connected during
@@ -829,7 +757,7 @@ void loop() {
     lastRtcSync = millis();
   }
 
-  interpolateLeds();
+  pixels.interpolate(cycleTimeMs);
   pixels.show();
 
   unsigned long end = millis();
