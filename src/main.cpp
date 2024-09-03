@@ -27,8 +27,6 @@
 #include "../include/wordConfig.h"
 #include "LittleFS.h"
 
-#define DEBUG 0
-
 NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800, brightnessScale);
 
 AsyncWebServer server(80);
@@ -40,8 +38,7 @@ WiFiUDP ntpUDP;
 RTC rtc;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
-Settings setting = Settings();
-Settings *settings = &setting;
+Settings *settings = new Settings();
 
 WORD words[MAX_WORDS];
 
@@ -61,18 +58,6 @@ double calcBrightnessScale(u_int16_t activeLeds) {
   }
   return maxCurrentAll / maxCurrent;
 }
-
-#if DEBUG
-void printColor(CRGB *color) {
-  Serial.print("rgb: (");
-  Serial.print(color->r);
-  Serial.print(", ");
-  Serial.print(color->g);
-  Serial.print(", ");
-  Serial.print(color->b);
-  Serial.println(")");
-}
-#endif
 
 uint16_t mirrorLedHorizontal(uint16_t led) {
   return COL_PIXELS - (led % COL_PIXELS) +
@@ -203,7 +188,7 @@ void setLeds() {
   setPixelBrightness();
 }
 
-void updateSettings() {
+void updateTimeProcessor() {
   timeProcessor->setDialect(settings->getUseDialect());
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
@@ -242,7 +227,7 @@ void getWordTime(char *wordTime, uint8_t maxLen) {
 }
 
 void notifyClients() {
-  updateSettings();
+  updateTimeProcessor();
   settings->saveSettings();
   setLeds();
   pixels.show();
@@ -649,10 +634,6 @@ void loadWordConfig() {
 
   file.close();
   Serial.println("Loaded words");
-
-#if DEBUG
-  serializeJsonPretty(words, Serial);
-#endif
 }
 
 void setup() {
@@ -669,7 +650,7 @@ void setup() {
   settings->loadSettings();
   settings->loadWordConfig();
   loadWordConfig();
-  updateSettings();
+  updateTimeProcessor();
 
   /* Start connection to rtc if possible */
   rtc.found = true;
@@ -762,9 +743,8 @@ void loop() {
     }
     setLeds();
     if (!setStartTime) {
-      snprintf(startTime, sizeof(startTime), "%02d:%02d:%02d %02d.%02d.%04d",
-               time.hour, time.minute, time.seconds, time.day, time.month,
-               time.year);
+      snprintf(startTime, sizeof(startTime), "%02d.%02d.%04d %02d:%02d:%02d",
+               time.day, time.month, time.year, time.hour, time.minute, time.seconds);
       setStartTime = true;
     }
     lastTimeUpdate = millis();
