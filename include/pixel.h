@@ -11,9 +11,7 @@ class Pixel {
 public:
   Pixel(double brightnessScaling);
   void setTargetColor(COLOR_RGB color);
-  void setStartColor(COLOR_RGB color);
   void setBrightness(double brightness);
-  void resetInterpolation();
   void interpolate(uint8_t step);
   COLOR_RGB getColor(bool scale);
   void setPixelType(PixelType type);
@@ -22,12 +20,8 @@ public:
   bool isTimePixel();
   bool isCustomPixel();
   COLOR_RGB getTargetColor();
-  COLOR_RGB getStartColor();
-  double getBrightness();
-  void setBrightnessScaling(double scale);
 
 private:
-  COLOR_RGB newTargetColor;
   COLOR_RGB startColor;
   COLOR_RGB targetColor;
   COLOR_RGB color;

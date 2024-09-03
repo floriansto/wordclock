@@ -16,8 +16,6 @@ void Pixel::setTargetColor(COLOR_RGB color) {
   }
 }
 
-void Pixel::setStartColor(COLOR_RGB color) { this->startColor = color; }
-
 void Pixel::setBrightness(double brightness) {
   if (brightness != this->targetBrightness) {
     this->startBrightness = this->brightness;
@@ -26,8 +24,6 @@ void Pixel::setBrightness(double brightness) {
     this->t = 0;
   }
 }
-
-void Pixel::resetInterpolation() { this->t = 0; }
 
 void Pixel::setPixelType(PixelType type) { this->type = type; }
 
@@ -61,16 +57,7 @@ COLOR_RGB Pixel::getColor(bool scale) {
 bool Pixel::isBackgroundPixel() { return this->type == PixelType::Background; }
 
 bool Pixel::isTimePixel() { return this->type == PixelType::Time; }
+
 bool Pixel::isCustomPixel() { return this->type == PixelType::CustomWord; }
 
 COLOR_RGB Pixel::getTargetColor() { return this->targetColor; }
-
-COLOR_RGB Pixel::getStartColor() { return this->startColor; }
-
-double Pixel::getBrightness() {
-  return this->brightness * this->brightnessScaling;
-}
-
-void Pixel::setBrightnessScaling(double scale) {
-  this->brightnessScaling = scale;
-}
