@@ -20,5 +20,9 @@ const double maxCurrentPerLed = 50;
 const u_int8_t cycleTimeMs = 10;
 const u_int16_t offsetLowSecs = 150;
 const u_int16_t offsetHighSecs = 300 - offsetLowSecs;
+const double brightnessScale =
+    maxCurrentPerLed * NUMPIXELS < maxCurrentAll
+        ? 1.0
+        : maxCurrentAll / (maxCurrentPerLed * NUMPIXELS);
 
 #endif

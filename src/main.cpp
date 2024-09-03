@@ -29,7 +29,7 @@
 
 #define DEBUG 0
 
-NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800, brightnessScale);
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -121,13 +121,9 @@ uint16_t mapLedIndex(uint16_t led) {
   }
 }
 
-double calcBrightness(uint8_t brightnessSetting) {
-  return brightnessSetting / 100.0 * calcBrightnessScale(numActiveLeds);
-}
-
 void setPixelBrightness() {
-  pixels.setBrightness(calcBrightness(settings->getBrightness()));
-  pixels.setBrightness(calcBrightness(settings->getBackgroundBrightness()),
+  pixels.setBrightness(settings->getBrightness());
+  pixels.setBrightness(settings->getBackgroundBrightness(),
                        PixelType::Background);
 }
 
@@ -205,7 +201,6 @@ void setLeds() {
   pixels.setColor(settings->getTimeColor(), PixelType::Time);
   pixels.setColor(settings->getBackgroundColor(), PixelType::Background);
   setPixelBrightness();
-  pixels.update();
 }
 
 void updateSettings() {
@@ -213,9 +208,6 @@ void updateSettings() {
   timeProcessor->setThreeQuater(settings->getUseThreeQuater());
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
-  setPixelBrightness();
-  pixels.update();
-  pixels.show();
 }
 
 void getWordTime(char *wordTime, uint8_t maxLen) {
@@ -253,6 +245,7 @@ void notifyClients() {
   updateSettings();
   settings->saveSettings();
   setLeds();
+  pixels.show();
 }
 
 void sendMessage(JsonDocument &json) {
@@ -425,15 +418,21 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   MessageId id = getMessageId(message);
   switch (id) {
   case MessageId::BRIGHTNESS: {
-    int brightness = atoi(messageBegin);
+    double brightness = atof(messageBegin);
     settings->setBrightness(brightness);
-    notifyClients();
+    pixels.setBrightness(settings->getBackgroundBrightness(),
+                         PixelType::Time);
+    pixels.setBrightness(settings->getBackgroundBrightness(),
+                         PixelType::CustomWord);
+    settings->saveSettings();
     break;
   }
   case MessageId::BACKGROUND_BRIGHTNESS: {
-    int brightness = atoi(messageBegin);
+    double brightness = atof(messageBegin);
     settings->setBackgroundBrightness(brightness);
-    notifyClients();
+    pixels.setBrightness(settings->getBackgroundBrightness(),
+                         PixelType::Background);
+    settings->saveSettings();
     break;
   }
   case MessageId::DIALECT: {

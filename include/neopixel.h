@@ -8,7 +8,7 @@
 class NeoPixel : Adafruit_NeoPixel {
 public:
   NeoPixel(uint16_t n, int16_t pin = 6,
-           neoPixelType type = NEO_GRB + NEO_KHZ800);
+           neoPixelType type = NEO_GRB + NEO_KHZ800, double brightnessScale = 1.0);
   ~NeoPixel();
   void setPixelType(uint16_t n, PixelType type);
   void setBrightness(double brighness, PixelType type);
@@ -24,10 +24,9 @@ public:
   bool isCustomPixel(uint16_t n);
   COLOR_RGB getTargetColor(uint16_t n);
   void setPixelColor(uint16_t n, uint32_t c);
-  void update();
 
 private:
-  void setupPixelProps();
+  void setupPixelProps(double brightnessScale);
   Pixel *pixelProps;
 };
 

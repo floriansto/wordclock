@@ -22,10 +22,10 @@ public:
   bool getUseQuaterPast();
   void setUseBackgroundColor(bool useBackgroundColor);
   bool getUseBackgroundColor();
-  void setBrightness(uint8_t brightness);
-  uint8_t getBrightness();
-  void setBackgroundBrightness(uint8_t brightness);
-  uint8_t getBackgroundBrightness();
+  void setBrightness(double brightness);
+  double getBrightness();
+  void setBackgroundBrightness(double brightness);
+  double getBackgroundBrightness();
   void loadSettings();
   void saveSettings();
   void saveWordConfig();
@@ -45,8 +45,8 @@ public:
   uint8_t getMaxWordConfigs();
 
 private:
-  uint8_t brightness;
-  uint8_t backgroundBrightness;
+  double brightness;
+  double backgroundBrightness;
   bool useDialect;
   bool useThreeQuater;
   bool useQuaterPast;

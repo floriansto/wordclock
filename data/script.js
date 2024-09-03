@@ -40,8 +40,9 @@ function onClose(event) {
 }
 
 function updateSliderBrightness(element) {
-  var sliderValue = document.getElementById(element.id).value;
-  document.getElementById(element.id + "Display").innerHTML = sliderValue;
+  var sliderValue = document.getElementById(element.id).value / 100.0;
+  console.log(sliderValue);
+  document.getElementById(element.id + "Display").innerHTML = Math.round(sliderValue * 100.0);
   websocket.send(element.id + "=" + sliderValue.toString());
 }
 
@@ -169,11 +170,13 @@ function onMessage(event) {
   for (var i = 0; i < keys.length; i++) {
     var key = keys[i];
     if (document.getElementById(key + "Display") != null) {
-      document.getElementById(key + "Display").innerHTML = message[key];
+      document.getElementById(key + "Display").innerHTML = Math.round(message[key] * 100.0);
     }
     elem = document.getElementById(key);
     if (elem != null) {
-      if (elem.getAttribute("type") === "checkbox") {
+      if (key == "brightness" || key == "backgroundBrightness") {
+        document.getElementById(key).value = Math.round(message[key] * 100.0);
+      } else if (elem.getAttribute("type") === "checkbox") {
         elem.checked = message[key];
       } else if (elem.getAttribute("type") === "color") {
         document.getElementById(key).value = "#" + message[key].toString(16).padStart(6, '0');

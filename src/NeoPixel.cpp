@@ -1,18 +1,23 @@
 #include "../include/neopixel.h"
 
-NeoPixel::NeoPixel(uint16_t n, int16_t pin, neoPixelType type)
+NeoPixel::NeoPixel(uint16_t n, int16_t pin, neoPixelType type,
+                   double brightnessScale)
     : Adafruit_NeoPixel{n, pin, type} {
   Adafruit_NeoPixel::setBrightness(255);
-  this->setupPixelProps();
+  if (brightnessScale > 1.0) {
+    brightnessScale = 1.0;
+  }
+  this->setupPixelProps(brightnessScale);
 }
 
-void NeoPixel::setupPixelProps() {
+void NeoPixel::setupPixelProps(double brightnessScale) {
+  Serial.println(brightnessScale);
   uint32_t pixelPropsSize = this->numLEDs * sizeof(Pixel);
   free(this->pixelProps);
   this->pixelProps = (Pixel *)malloc(pixelPropsSize);
   if (this->pixelProps) {
     for (uint16_t i = 0; i < this->numLEDs; ++i) {
-      this->pixelProps[i] = Pixel();
+      this->pixelProps[i] = Pixel(brightnessScale);
     }
   } else {
     numLEDs = 0;
@@ -62,23 +67,20 @@ void NeoPixel::setColor(uint16_t led, COLOR_RGB color) {
 }
 
 void NeoPixel::interpolate(uint8_t step) {
-  COLOR_RGB color;
   for (uint8_t i = 0; i < this->numLEDs; ++i) {
-    color = this->pixelProps[i].interpolate(step, true);
-    this->setPixelColor(i, rgbToHex(color));
+    this->pixelProps[i].interpolate(step);
   }
 }
 
 NeoPixel::~NeoPixel() { free(this->pixelProps); }
 
-void NeoPixel::show() { Adafruit_NeoPixel::show(); }
-
-void NeoPixel::update() {
-  if (pixelProps != nullptr) {
-  }
+void NeoPixel::show() {
+  COLOR_RGB color;
   for (uint8_t i = 0; i < this->numLEDs; ++i) {
-    this->pixelProps[i].update();
+    color = this->pixelProps[i].getColor(true);
+    this->setPixelColor(i, rgbToHex(color));
   }
+  Adafruit_NeoPixel::show();
 }
 
 void NeoPixel::begin() { Adafruit_NeoPixel::begin(); }

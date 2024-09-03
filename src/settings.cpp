@@ -45,15 +45,15 @@ bool Settings::getUseBackgroundColor() {
   return this->useBackgroundColor;
 }
 
-uint8_t Settings::getBrightness() { return this->brightness; }
+double Settings::getBrightness() { return this->brightness; }
 
-void Settings::setBrightness(uint8_t brightness) {
+void Settings::setBrightness(double brightness) {
   this->brightness = brightness;
 }
 
-uint8_t Settings::getBackgroundBrightness() { return this->backgroundBrightness; }
+double Settings::getBackgroundBrightness() { return this->backgroundBrightness; }
 
-void Settings::setBackgroundBrightness(uint8_t brightness) {
+void Settings::setBackgroundBrightness(double brightness) {
   this->backgroundBrightness = brightness;
 }
 

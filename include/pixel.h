@@ -9,30 +9,32 @@ enum class PixelType { Time, Background, CustomWord, Unknown };
 
 class Pixel {
 public:
-  Pixel();
+  Pixel(double brightnessScaling);
   void setTargetColor(COLOR_RGB color);
   void setStartColor(COLOR_RGB color);
   void setBrightness(double brightness);
   void resetInterpolation();
-  COLOR_RGB interpolate(uint8_t step, bool scale);
+  void interpolate(uint8_t step);
+  COLOR_RGB getColor(bool scale);
   void setPixelType(PixelType type);
   PixelType getType();
-  void update();
   bool isBackgroundPixel();
   bool isTimePixel();
   bool isCustomPixel();
   COLOR_RGB getTargetColor();
   COLOR_RGB getStartColor();
   double getBrightness();
+  void setBrightnessScaling(double scale);
 
 private:
   COLOR_RGB newTargetColor;
   COLOR_RGB startColor;
   COLOR_RGB targetColor;
+  COLOR_RGB color;
   double brightness;
   double startBrightness;
   double targetBrightness;
-  double newTargetBrightness;
+  double brightnessScaling;
   PixelType type;
   uint16_t t;
 };
