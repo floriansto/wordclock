@@ -3,7 +3,7 @@
 
 #include "color.h"
 
-const uint16_t interpolationDuration = 2000; /* ms */
+const uint16_t interpolationDuration = 400; /* ms */
 
 enum class PixelType { Time, Background, CustomWord, Unknown };
 
