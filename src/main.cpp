@@ -214,6 +214,7 @@ void updateSettings() {
   timeProcessor->setQuaterPast(settings->getUseQuaterPast());
   timeProcessor->update();
   setPixelBrightness();
+  pixels.update();
   pixels.show();
 }
 

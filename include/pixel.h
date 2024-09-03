@@ -14,7 +14,7 @@ public:
   void setStartColor(COLOR_RGB color);
   void setBrightness(double brightness);
   void resetInterpolation();
-  COLOR_RGB interpolate(uint8_t step);
+  COLOR_RGB interpolate(uint8_t step, bool scale);
   void setPixelType(PixelType type);
   PixelType getType();
   void update();
@@ -30,6 +30,9 @@ private:
   COLOR_RGB startColor;
   COLOR_RGB targetColor;
   double brightness;
+  double startBrightness;
+  double targetBrightness;
+  double newTargetBrightness;
   PixelType type;
   uint16_t t;
 };

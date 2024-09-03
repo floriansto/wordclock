@@ -1,9 +1,7 @@
 #include "../include/color.h"
 #include <Arduino.h>
 #include <cmath>
-
-// Linearly interpolate between two double values
-double lerp(double a, double b, double t) { return a * (1 - t) + b * t; }
+#include "../include/math.h"
 
 // Interpolate between two colors in CIELCH color space
 u_int32_t lch_interp(LCH c1, LCH c2, double t) {

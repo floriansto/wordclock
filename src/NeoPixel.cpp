@@ -65,11 +65,8 @@ void NeoPixel::interpolate(uint8_t step) {
   COLOR_RGB color;
   double brightness;
   for (uint8_t i = 0; i < this->numLEDs; ++i) {
-    color = this->pixelProps[i].interpolate(step);
+    color = this->pixelProps[i].interpolate(step, true);
     brightness = this->pixelProps[i].getBrightness();
-    color.r = (uint8_t)((double)color.r * brightness);
-    color.g = (uint8_t)((double)color.g * brightness);
-    color.b = (uint8_t)((double)color.b * brightness);
     this->setPixelColor(i, rgbToHex(color));
   }
 }
