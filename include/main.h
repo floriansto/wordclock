@@ -1,12 +1,13 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#include <timeprocessor.h>
 #include <RTClib.h>
+#include <timeprocessor.h>
 
 #define MAX_WORDS 25
 #define MAX_WORD_LENGTH 15
 #define MAX_WORDTIME_LENGTH 40
+
 
 typedef struct _time {
   u_int8_t hour;
@@ -30,6 +31,7 @@ enum class Error {
   TIME_TO_WORD_CONVERSION,
   SUMMERTIME_ERROR,
   UPDATE_RTC_TIME_ERROR,
+  UPDATE_NTP_TIME_ERROR,
   TIMESTACK_GET_ELEM_FAILED,
   CYCLE_TIME_VIOLATION,
 };

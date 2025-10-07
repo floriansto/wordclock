@@ -126,7 +126,7 @@ void setLeds() {
 
   langKey = settings->getLangKey();
 
-  time = getTime(&rtc, &timeClient, wifiConnected);
+  time = getTime(&rtc, &timeClient);
   wordConfig = settings->getWordConfig();
   for (uint8_t k = 0; k < settings->getMaxWordConfigs(); ++k) {
     if (!wordConfig[k].isWordConfigActive(time.day, time.month)) {
@@ -303,7 +303,7 @@ void sendWordConfigToWeb(uint8_t index) {
 }
 
 bool updateTime(TIME *time) {
-  *time = getTime(&rtc, &timeClient, wifiConnected);
+  *time = getTime(&rtc, &timeClient);
 
   /* Error if time is not valid */
   if (!time->valid) {
@@ -405,8 +405,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   case MessageId::BRIGHTNESS: {
     double brightness = atof(messageBegin);
     settings->setBrightness(brightness);
-    pixels.setBrightness(settings->getBackgroundBrightness(),
-                         PixelType::Time);
+    pixels.setBrightness(settings->getBackgroundBrightness(), PixelType::Time);
     pixels.setBrightness(settings->getBackgroundBrightness(),
                          PixelType::CustomWord);
     settings->saveSettings();
@@ -469,7 +468,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   case MessageId::UTC_TIME_OFFSET: {
     int offset = atoi(messageBegin);
     settings->setUtcHourOffset(offset);
-    if (adjustSummertime(&rtc, &timeClient, offset, wifiConnected) != true) {
+    if (adjustSummertime(&rtc, &timeClient, offset,
+                         settings->getSummertime()) != true) {
       Serial.println("Failed to adjust time");
       error = Error::SUMMERTIME_ERROR;
     }
@@ -658,12 +658,23 @@ void setup() {
   if (!rtc.rtc.begin()) {
     Serial.println("Couldn't find RTC");
     rtc.found = false;
+  } else {
+    Serial.println("Found RTC!");
+    /* If the rtc lost its power, set the time as build time of the sketch*/
+    rtc.rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    if (rtc.rtc.lostPower()) {
+      rtc.rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+      Serial.println("Set time to time of sketch compilation due to powerloss");
+    }
+    rtc.valid = true;
   }
 
-  /* If the rtc lost its power, mark the time as invalid */
-  if (rtc.found == true && rtc.rtc.lostPower()) {
-    rtc.valid = false;
-  }
+  Serial.print("Time: ");
+  Serial.print(rtc.rtc.now().hour());
+  Serial.print(":");
+  Serial.print(rtc.rtc.now().minute());
+  Serial.print(":");
+  Serial.println(rtc.rtc.now().second());
 
   /* Initialize wifi connection or enable the hotspot */
   WiFi.mode(WIFI_STA);
@@ -673,6 +684,15 @@ void setup() {
   } else {
     Serial.println("Configportal at 192.168.4.1 running");
   }
+
+  if (!timeClient.update()) {
+    Serial.println("NTP cannot be reached!");
+  } else {
+    if (!updateRtcTime(&rtc, &timeClient)) {
+      Serial.println("Failed to update rtc from ntp time!");
+    }
+  }
+
   setLeds();
   pixels.show();
   Serial.print("Settings size: ");
@@ -694,6 +714,10 @@ unsigned long lastRtcSync = syncRtc;
 /* Update time every second */
 u_int32_t updateTimeInterval = 1 * 1000;
 unsigned long lastTimeUpdate = updateTimeInterval;
+
+/* Update NTP time every 10 minutes */
+u_int32_t updateNtpInterval = 10 * 60 * 1000;
+unsigned long lastNtpUpdate = updateNtpInterval;
 
 bool setStartTime = false;
 
@@ -723,15 +747,15 @@ void loop() {
   if (wifiConnected && WiFi.status() != WL_CONNECTED) {
     stopWebFunctions();
   }
+
   /* Store state of wifi connection */
   wifiConnected = WiFi.status() == WL_CONNECTED;
 
   /* Check if the summertime needs to be adjusted and if so, do so */
   if (millis() - lastDaylightCheck > checkDaylightTime) {
     if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
-                         wifiConnected) != true) {
-      error = Error::SUMMERTIME_ERROR;
-      return;
+                         settings->getSummertime())) {
+      settings->setSummertime(!settings->getSummertime());
     }
     lastDaylightCheck = millis();
   }
@@ -739,24 +763,38 @@ void loop() {
   /* Get the current time */
   if (millis() - lastTimeUpdate > updateTimeInterval) {
     if (updateTime(&time) == false) {
+      Serial.println("Failed updating time!");
       return;
     }
     setLeds();
     if (!setStartTime) {
       snprintf(startTime, sizeof(startTime), "%02d.%02d.%04d %02d:%02d:%02d",
-               time.day, time.month, time.year, time.hour, time.minute, time.seconds);
+               time.day, time.month, time.year, time.hour, time.minute,
+               time.seconds);
       setStartTime = true;
     }
     lastTimeUpdate = millis();
+    Serial.print("Time: ");
+    Serial.print(time.hour);
+    Serial.print(":");
+    Serial.print(time.minute);
+    Serial.print(":");
+    Serial.println(time.seconds);
   }
 
   /* Update the time on the rtc from the ntp time */
   if (millis() - lastRtcSync > syncRtc && rtc.found == true) {
-    if (updateRtcTime(&rtc, &time, wifiConnected) == false) {
+    if (!updateRtcTime(&rtc, &timeClient)) {
       error = Error::UPDATE_RTC_TIME_ERROR;
-      return;
     }
     lastRtcSync = millis();
+  }
+
+  if (millis() - lastNtpUpdate) {
+    if (!timeClient.update()) {
+      error = Error::UPDATE_NTP_TIME_ERROR;
+    }
+    lastNtpUpdate = millis();
   }
 
   pixels.interpolate(cycleTimeMs);

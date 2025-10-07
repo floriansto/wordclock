@@ -7,42 +7,21 @@
 
 #define DEBUG 0
 
-bool updateRtcTime(RTC *rtc, TIME *time, bool wifiConnected) {
-  if (rtc->found == false) {
-#if DEBUG
-    Serial.println("Missing rtc, time cannot be updated");
-#endif
-    return true;
-  }
+bool updateRtcTime(RTC *rtc, NTPClient *ntp) {
 
-  if (wifiConnected == false) {
+  if (!ntp->isTimeSet()) {
 #if DEBUG
-    Serial.println("Missing wifi connection, cannot adjust NTP time");
+    Serial.println("NTP time is not valid");
 #endif
-    rtc->valid = false;
-    return false;
-  }
-
-  if (wifiConnected == false && rtc->valid == true) {
-#if DEBUG
-    Serial.println("Missing wifi connection, but rtc time seems to be valid");
-#endif
-    return true;
-  }
-
-  if (rtc->found == false) {
-#if DEBUG
-    Serial.println("RTC missing, cannot update time on the rtc");
-#endif
-    rtc->valid = false;
     return false;
   }
 
 #if DEBUG
   Serial.println("Adjust RTC time from NTP time");
 #endif
-  rtc->rtc.adjust(DateTime(time->year, time->month, time->day, time->hour,
-                           time->minute, time->seconds));
+  TIME time = getTimeNtp(ntp);
+  rtc->rtc.adjust(DateTime(time.year, time.month, time.day, time.hour,
+                           time.minute, time.seconds));
   rtc->valid = true;
   return true;
 }
@@ -62,7 +41,6 @@ TIME getTimeRtc(RTC_DS3231 *rtc) {
 
 TIME getTimeNtp(NTPClient *timeClient) {
   TIME time;
-  timeClient->update();
   time.hour = timeClient->getHours();
   time.minute = timeClient->getMinutes();
   time.seconds = timeClient->getSeconds();
@@ -75,16 +53,17 @@ TIME getTimeNtp(NTPClient *timeClient) {
   return time;
 }
 
-TIME getTime(RTC *rtc, NTPClient *timeClient, bool wifiConnected) {
-  TIME time;
-  memset(&time, 0, sizeof(time));
-  if (wifiConnected == false && rtc->valid == true) {
+TIME getTime(RTC *rtc, NTPClient *ntp) {
+  if (ntp->isTimeSet()) {
+    return getTimeNtp(ntp);
+  }
+  if (rtc->valid) {
     return getTimeRtc(&(rtc->rtc));
-  } else if (wifiConnected == true) {
-    return getTimeNtp(timeClient);
   }
 
   Serial.println("Cannot get a valid time");
+  TIME time;
+  memset(&time, 0, sizeof(time));
   time.valid = false;
   return time;
 }
@@ -121,31 +100,38 @@ bool summertime_EU(TIME time, s8_t tzHours) {
               (1 + tzHours + 24 * (31 - (5 * year / 4 + 1) % 7)));
 }
 
-bool adjustSummertime(RTC *rtc, NTPClient *timeClient, s8_t utcHourOffsets,
-                      bool wifiConnected) {
-#if DEBUG
-  Serial.println("Set summertime offset");
-#endif
-  TIME time = getTime(rtc, timeClient, wifiConnected);
+bool adjustSummertime(RTC *rtc, NTPClient *ntp, s8_t utcHourOffsets,
+                      bool isSummertime) {
+  TIME time = getTime(rtc, ntp);
   if (time.valid == false) {
     return false;
   }
-  if (summertime_EU(time, utcHourOffsets) == true) {
+  /* Switch from summer to winter */
+  if (summertime_EU(time, utcHourOffsets) && !isSummertime) {
 #if DEBUG
     Serial.println("Summertime is active");
 #endif
-    timeClient->setTimeOffset((utcHourOffsets + 1) * 3600);
-  } else {
+    ntp->setTimeOffset((utcHourOffsets + 1) * 3600);
+    if (rtc->valid) {
+      rtc->rtc.adjust(DateTime(time.year, time.month, time.day, time.hour + 1,
+                               time.minute, time.seconds));
+    }
+    isSummertime = true;
+    return true;
+  }
+
+  /* Switch from winter to summer */
+  if (!summertime_EU(time, utcHourOffsets) && isSummertime) {
 #if DEBUG
     Serial.println("Summertime is inactive");
 #endif
-    timeClient->setTimeOffset(utcHourOffsets * 3600);
+    ntp->setTimeOffset(utcHourOffsets * 3600);
+    if (rtc->valid) {
+      rtc->rtc.adjust(DateTime(time.year, time.month, time.day, time.hour - 1,
+                               time.minute, time.seconds));
+    }
+    isSummertime = false;
+    return true;
   }
-  timeClient->update();
-  time = getTime(rtc, timeClient, wifiConnected);
-
-  if (updateRtcTime(rtc, &time, wifiConnected) == false) {
-    return false;
-  }
-  return true;
+  return false;
 }
