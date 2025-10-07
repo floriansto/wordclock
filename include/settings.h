@@ -2,8 +2,8 @@
 #define __SETTINGS_H__
 
 #include "../include/color.h"
-#include "../include/wordConfig.h"
 #include "../include/main.h"
+#include "../include/wordConfig.h"
 
 #define MAX_WORD_CONFIGS 15
 #define JSON_SIZE_WORD_CONFIG 384
@@ -26,6 +26,8 @@ public:
   double getBrightness();
   void setBackgroundBrightness(double brightness);
   double getBackgroundBrightness();
+  void setSummertime(bool summertime);
+  bool getSummertime();
   void loadSettings();
   void saveSettings();
   void saveWordConfig();
@@ -34,11 +36,11 @@ public:
   void deserializeBasic(JsonObject &json);
   sint8_t getUtcHourOffset();
   void setUtcHourOffset(sint8_t offset);
-  void setTimeColor(const char* rgbColor);
-  void setBackgroundColor(const char* rgbColor);
+  void setTimeColor(const char *rgbColor);
+  void setBackgroundColor(const char *rgbColor);
   COLOR_RGB getBackgroundColor();
-  void setWordConfig(const char* wordConfig);
-  WordConfig* getWordConfig();
+  void setWordConfig(const char *wordConfig);
+  WordConfig *getWordConfig();
   COLOR_RGB getTimeColor();
   LANGUAGE getLangKey();
   void clearWordConfig();
@@ -51,6 +53,7 @@ private:
   bool useThreeQuater;
   bool useQuaterPast;
   bool useBackgroundColor;
+  bool isSummertime;
   COLOR_RGB backgroundColor;
   COLOR_RGB timeColor;
   uint8_t utcTimeOffset;

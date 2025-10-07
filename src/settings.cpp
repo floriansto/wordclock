@@ -3,9 +3,9 @@
 #include <ArduinoJson.h>
 
 #include "../include/hw_settings.h"
+#include "../include/main.h"
 #include "../include/settings.h"
 #include "../include/wordConfig.h"
-#include "../include/main.h"
 
 Settings::Settings() {
   this->timeColor = COLOR_RGB{252, 184, 33};
@@ -15,13 +15,12 @@ Settings::Settings() {
   this->useThreeQuater = true;
   this->useQuaterPast = true;
   this->useBackgroundColor = true;
+  this->isSummertime = false;
   this->utcTimeOffset = 1;
   this->maxWordConfigs = 0;
 }
 
-void Settings::setUseDialect(bool useDialect) {
-  this->useDialect = useDialect;
-}
+void Settings::setUseDialect(bool useDialect) { this->useDialect = useDialect; }
 
 bool Settings::getUseDialect() { return this->useDialect; }
 
@@ -41,9 +40,7 @@ void Settings::setUseBackgroundColor(bool useBackgroundColor) {
   this->useBackgroundColor = useBackgroundColor;
 }
 
-bool Settings::getUseBackgroundColor() {
-  return this->useBackgroundColor;
-}
+bool Settings::getUseBackgroundColor() { return this->useBackgroundColor; }
 
 double Settings::getBrightness() { return this->brightness; }
 
@@ -51,10 +48,18 @@ void Settings::setBrightness(double brightness) {
   this->brightness = brightness;
 }
 
-double Settings::getBackgroundBrightness() { return this->backgroundBrightness; }
+double Settings::getBackgroundBrightness() {
+  return this->backgroundBrightness;
+}
 
 void Settings::setBackgroundBrightness(double brightness) {
   this->backgroundBrightness = brightness;
+}
+
+bool Settings::getSummertime() { return this->isSummertime; }
+
+void Settings::setSummertime(bool isSummertime) {
+  this->isSummertime = isSummertime;
 }
 
 void Settings::setUtcHourOffset(sint8_t offset) {
@@ -63,7 +68,7 @@ void Settings::setUtcHourOffset(sint8_t offset) {
 
 sint8_t Settings::getUtcHourOffset() { return this->utcTimeOffset; }
 
-WordConfig* Settings::getWordConfig() { return this->wordConfig; }
+WordConfig *Settings::getWordConfig() { return this->wordConfig; }
 
 void Settings::clearWordConfig() {
   for (uint8_t i = 0; i < MAX_WORD_CONFIGS; ++i) {
@@ -76,9 +81,9 @@ COLOR_RGB getColor(JsonArray color) {
   return COLOR_RGB{color[0], color[1], color[2]};
 }
 
-uint8_t Settings::getMaxWordConfigs() {return this->maxWordConfigs; }
+uint8_t Settings::getMaxWordConfigs() { return this->maxWordConfigs; }
 
-void Settings::setWordConfig(const char* wordConfig) {
+void Settings::setWordConfig(const char *wordConfig) {
   StaticJsonDocument<JSON_SIZE_WORD_CONFIG> config;
   uint32_t leds[MAX_LED_ENTRIES];
 
@@ -105,14 +110,17 @@ void Settings::setWordConfig(const char* wordConfig) {
   this->wordConfig[maxWordConfigs].setShowTime(config["useTime"].as<boolean>());
   this->wordConfig[maxWordConfigs].setLeds(leds, MAX_LED_ENTRIES);
   this->wordConfig[maxWordConfigs].setColor(getColor(config["color"]));
-  this->wordConfig[maxWordConfigs].setWhen((LedConfigWhen)config["when"].as<uint8_t>());
-  this->wordConfig[maxWordConfigs].setDate(Date{config["date"]["day"].as<uint16_t>(), config["date"]["month"].as<uint8_t>()});
+  this->wordConfig[maxWordConfigs].setWhen(
+      (LedConfigWhen)config["when"].as<uint8_t>());
+  this->wordConfig[maxWordConfigs].setDate(
+      Date{config["date"]["day"].as<uint16_t>(),
+           config["date"]["month"].as<uint8_t>()});
   this->wordConfig[maxWordConfigs].setValid(true);
 
   ++maxWordConfigs;
 }
 
-COLOR_RGB stringToColor(const char* rgbColor) {
+COLOR_RGB stringToColor(const char *rgbColor) {
   StaticJsonDocument<64> config;
 
   DeserializationError error = deserializeJson(config, rgbColor);
@@ -125,11 +133,11 @@ COLOR_RGB stringToColor(const char* rgbColor) {
   return getColor(config.as<JsonArray>());
 }
 
-void Settings::setTimeColor(const char* rgbColor) {
+void Settings::setTimeColor(const char *rgbColor) {
   this->timeColor = stringToColor(rgbColor);
 }
 
-void Settings::setBackgroundColor(const char* rgbColor) {
+void Settings::setBackgroundColor(const char *rgbColor) {
   this->backgroundColor = stringToColor(rgbColor);
 }
 
@@ -149,6 +157,7 @@ void Settings::serializeBasic(JsonObject &json) {
   json["useQuaterPast"] = this->useQuaterPast;
   json["useThreeQuater"] = this->useThreeQuater;
   json["useBackgroundColor"] = this->useBackgroundColor;
+  json["isSummertime"] = this->isSummertime;
   json["utcTimeOffset"] = this->utcTimeOffset;
   json["timeColor"] = rgbToHex(this->timeColor);
   json["backgroundColor"] = rgbToHex(this->backgroundColor);
@@ -161,6 +170,7 @@ void Settings::deserializeBasic(JsonObject &json) {
   this->useQuaterPast = json["useQuaterPast"];
   this->useThreeQuater = json["useThreeQuater"];
   this->useBackgroundColor = json["useBackgroundColor"];
+  this->isSummertime = json["isSummertime"];
   this->utcTimeOffset = json["utcTimeOffset"];
   this->timeColor = hexToRgb(json["timeColor"]);
   this->backgroundColor = hexToRgb(json["backgroundColor"]);
@@ -227,7 +237,8 @@ void Settings::loadWordConfig() {
     StaticJsonDocument<JSON_SIZE_WORD_CONFIG> settings;
     DeserializationError error = deserializeJson(settings, file);
     if (error) {
-      Serial.println("Failed to read customWordConfig.jsonl using default configuration");
+      Serial.println(
+          "Failed to read customWordConfig.jsonl using default configuration");
       Serial.println(error.f_str());
       break;
     }
