@@ -470,8 +470,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     settings->setUtcHourOffset(offset);
     if (adjustSummertime(&rtc, &timeClient, offset,
                          settings->getSummertime()) != true) {
-      Serial.println("Failed to adjust time");
-      error = Error::SUMMERTIME_ERROR;
+      Serial.println("No time adjusted");
     }
     TIME time;
     if (updateTime(&time) == false) {
@@ -717,7 +716,7 @@ unsigned long lastTimeUpdate = updateTimeInterval;
 
 /* Update NTP time every 10 minutes */
 u_int32_t updateNtpInterval = 10 * 60 * 1000;
-unsigned long lastNtpUpdate = updateNtpInterval;
+unsigned long lastNtpUpdate = 0;
 
 bool setStartTime = false;
 
@@ -729,13 +728,31 @@ void loop() {
   /* Starttimer */
   unsigned long start = millis();
 
-  /* Display all red leds in red in case of an error. */
-  if (error != Error::OK) {
-    for (u_int8_t i = 0; i < NUMPIXELS; ++i) {
-      pixels.setPixelColor(i, 0xFF0000);
-    }
-    pixels.show();
-    Serial.println("Error detected");
+  switch (error) {
+  case Error::NO_TIME:
+    Serial.println("Error: No time");
+    break;
+  case Error::TIME_TO_WORD_CONVERSION:
+    Serial.println("Error: Time to word conversion");
+    break;
+  case Error::SUMMERTIME_ERROR:
+    Serial.println("Error: Summertime");
+    break;
+  case Error::UPDATE_NTP_TIME_ERROR:
+    Serial.println("Error: Update ntp");
+    break;
+  case Error::UPDATE_RTC_TIME_ERROR:
+    Serial.println("Error: Update rtc");
+    break;
+  case Error::TIMESTACK_GET_ELEM_FAILED:
+    Serial.println("Error: Timestack");
+    break;
+  case Error::CYCLE_TIME_VIOLATION:
+    Serial.println("Error: Cycle time");
+    break;
+  case Error::OK:
+  default:
+    break;
   }
 
   /* Start webserver and ntp time when wifi was not connected during
@@ -775,12 +792,6 @@ void loop() {
       setStartTime = true;
     }
     lastTimeUpdate = millis();
-    Serial.print("Time: ");
-    Serial.print(time.hour);
-    Serial.print(":");
-    Serial.print(time.minute);
-    Serial.print(":");
-    Serial.println(time.seconds);
   }
 
   /* Update the time on the rtc from the ntp time */
@@ -791,7 +802,7 @@ void loop() {
     lastRtcSync = millis();
   }
 
-  if (millis() - lastNtpUpdate) {
+  if (millis() - lastNtpUpdate > updateNtpInterval) {
     if (!timeClient.update()) {
       error = Error::UPDATE_NTP_TIME_ERROR;
     }
