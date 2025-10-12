@@ -756,6 +756,7 @@ void loop() {
     if (adjustSummertime(&rtc, &timeClient, settings->getUtcHourOffset(),
                          settings->getSummertime())) {
       settings->setSummertime(!settings->getSummertime());
+      settings->saveSettings();
     }
     lastDaylightCheck = millis();
   }

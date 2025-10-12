@@ -103,6 +103,8 @@ bool summertime_EU(TIME time, s8_t tzHours) {
 bool adjustSummertime(RTC *rtc, NTPClient *ntp, s8_t utcHourOffsets,
                       bool isSummertime) {
   TIME time = getTime(rtc, ntp);
+  DateTime current{time.year, time.month,  time.day,
+                   time.hour, time.minute, time.seconds};
   if (time.valid == false) {
     return false;
   }
@@ -113,8 +115,7 @@ bool adjustSummertime(RTC *rtc, NTPClient *ntp, s8_t utcHourOffsets,
 #endif
     ntp->setTimeOffset((utcHourOffsets + 1) * 3600);
     if (rtc->valid) {
-      rtc->rtc.adjust(DateTime(time.year, time.month, time.day, time.hour + 1,
-                               time.minute, time.seconds));
+      rtc->rtc.adjust(DateTime(current.unixtime() + 3600));
     }
     isSummertime = true;
     return true;
@@ -127,8 +128,7 @@ bool adjustSummertime(RTC *rtc, NTPClient *ntp, s8_t utcHourOffsets,
 #endif
     ntp->setTimeOffset(utcHourOffsets * 3600);
     if (rtc->valid) {
-      rtc->rtc.adjust(DateTime(time.year, time.month, time.day, time.hour - 1,
-                               time.minute, time.seconds));
+      rtc->rtc.adjust(DateTime(current.unixtime() - 3600));
     }
     isSummertime = false;
     return true;
