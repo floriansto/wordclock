@@ -108,30 +108,29 @@ bool adjustSummertime(RTC *rtc, NTPClient *ntp, s8_t utcHourOffsets,
   if (time.valid == false) {
     return false;
   }
+
   /* Switch from summer to winter */
-  if (summertime_EU(time, utcHourOffsets) && !isSummertime) {
+  if (summertime_EU(time, utcHourOffsets)) {
 #if DEBUG
     Serial.println("Summertime is active");
 #endif
     ntp->setTimeOffset((utcHourOffsets + 1) * 3600);
-    if (rtc->valid) {
+    if (rtc->valid && !isSummertime) {
       rtc->rtc.adjust(DateTime(current.unixtime() + 3600));
     }
-    isSummertime = true;
-    return true;
+    return !isSummertime;
   }
 
   /* Switch from winter to summer */
-  if (!summertime_EU(time, utcHourOffsets) && isSummertime) {
+  if (!summertime_EU(time, utcHourOffsets)) {
 #if DEBUG
     Serial.println("Summertime is inactive");
 #endif
     ntp->setTimeOffset(utcHourOffsets * 3600);
-    if (rtc->valid) {
+    if (rtc->valid && isSummertime) {
       rtc->rtc.adjust(DateTime(current.unixtime() - 3600));
     }
-    isSummertime = false;
-    return true;
+    return isSummertime;
   }
   return false;
 }
